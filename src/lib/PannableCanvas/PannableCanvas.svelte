@@ -38,19 +38,11 @@
 	} from '$lib/Contexts/Animate'
 	import { browser } from '$app/environment'
 
-	let canvas: HTMLCanvasElement
+	let canvas: HTMLCanvasElement | undefined = undefined
 	export let pointersWritable: Writable<PointersDict> = writable({})
 	export let pointersWritableProxy: Writable<PointersDict> = writable({})
 	export let pPan: (e: CustomEvent<PanEvent>, ctx: CanvasRenderingContext2D) => boolean = () => true
 	export let context: ContextWrapper<Context2D> | undefined = undefined
-
-	const restartListeners = new Set<() => void>()
-
-	const keysInObjects: number[] = [0]
-
-	function restartListener() {
-		restartListeners.forEach((listener) => listener())
-	}
 
 	const dispatch = createEventDispatcher<{
 		ppanstart: PEvent
@@ -64,6 +56,7 @@
 		ppan: PanEvent
 		ptap: PEvent
 		initialized: void
+		canvasWindowChanged: void
 	}>()
 	let ctx: CanvasRenderingContext2D | null
 	$: {
@@ -160,6 +153,7 @@
 			)
 		)
 		dispatch('zoom', e.detail)
+		dispatch('canvasWindowChanged')
 	}
 	function onPPan(e: CustomEvent<PanEvent>) {
 		if (!ctx || !canvas || !context || !pPan(e, ctx) || !zoomTranslateOnDown) return
@@ -173,6 +167,7 @@
 		)
 		context.ctx.setPosToVec(newZoomTranslate)
 		dispatch('ppan', e.detail)
+		dispatch('canvasWindowChanged')
 	}
 </script>
 

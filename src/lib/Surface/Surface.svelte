@@ -23,7 +23,7 @@
 
 	$: hasAlign = Object.values(alignTo).some((v) => v != undefined)
 	setContext('setGridParams', setGridParams)
-	$: context && setContext('setContext', context.ctx)
+	$: context && setContext('context', context.ctx)
 	getContext('gestures')
 	/** number of tiles */
 	export let width: number | undefined = undefined

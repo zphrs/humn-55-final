@@ -1,4 +1,5 @@
 <script>
+	import { browser } from '$app/environment'
 	import Vis from '../components/Vis.svelte'
 </script>
 
@@ -17,7 +18,9 @@
 		you - on the platform for longer, watching more ads. Then it shows you that content which got
 		others to stay on their app for longer. Don't believe me? Look at this visualization of Twitter:
 	</p>
-	<Vis />
+	{#if browser}
+		<Vis />
+	{/if}
 </main>
 
 <style>

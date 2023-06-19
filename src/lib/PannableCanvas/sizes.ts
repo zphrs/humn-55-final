@@ -37,10 +37,10 @@ export class Rect implements Shape {
 	toBounds(): Bounds {
 		return new Bounds(newVec2(this.x, this.y), newVec2(this.x + this.width, this.y + this.height))
 	}
-	getCenter(): Point {
+	getCenter(): Vec2 {
 		return newVec2((this.x + this.width) / 2, (this.y + this.height) / 2)
 	}
-	contains(point: Point): boolean {
+	contains(point: Vec2): boolean {
 		return (
 			point.x >= this.x &&
 			point.x <= this.x + this.width &&

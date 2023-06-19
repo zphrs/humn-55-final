@@ -253,6 +253,9 @@ export function createContext2D(
 				child.ctx.setScale(scale)
 				child.ctx.setPos(x, y)
 				addObjectWithZIndex(out.objects, keysInObjects, zIndex, child)
+				child.addRestartListener(() => {
+					restartListener()
+				})
 				restartListener()
 				return child
 			}
@@ -315,19 +318,22 @@ export function createContext2D(
 					}
 				}
 			}
+			this.needsUpdate = draw
 			return draw
 		},
 		draw(ctx) {
-			ctx.canvasCtx.clearRect(0, 0, ctx.canvasCtx.canvas.width, ctx.canvasCtx.canvas.height)
+			ctx.canvasCtx.save()
+			if (canvas) {
+				ctx.canvasCtx.clearRect(0, 0, ctx.canvasCtx.canvas.width, ctx.canvasCtx.canvas.height)
+				ctx.canvasCtx.imageSmoothingEnabled = true
+				ctx.canvasCtx.translate(
+					ctx.canvasCtx.canvas.width / 2 / devicePixelRatio,
+					ctx.canvasCtx.canvas.height / 2 / devicePixelRatio
+				)
+			}
 			// transform the canvas
 			const { pos, scale } = getCurrentState(animationInfo)
 			// save the current state
-			ctx.canvasCtx.save()
-			ctx.canvasCtx.imageSmoothingEnabled = true
-			ctx.canvasCtx.translate(
-				ctx.canvasCtx.canvas.width / 2 / devicePixelRatio,
-				ctx.canvasCtx.canvas.height / 2 / devicePixelRatio
-			)
 			ctx.canvasCtx.scale(scale, scale)
 			ctx.canvasCtx.translate(...vecToIter(pos))
 			for (const key of keysInObjects) {
