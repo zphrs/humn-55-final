@@ -93,6 +93,12 @@ export default function addMoreEvents(
 		const rect = boundingElem.getBoundingClientRect()
 
 		const out = event as HasClientPos & HasRelativePos & Type
+		// check if boundingElem is a canvas
+		if (boundingElem.tagName == 'CANVAS') {
+			out.relativeX = event.clientX - rect.left
+			out.relativeY = event.clientY - rect.top
+			return out
+		}
 		out.relativeX = event.clientX - rect.left
 		out.relativeY = event.clientY - rect.top
 		return out

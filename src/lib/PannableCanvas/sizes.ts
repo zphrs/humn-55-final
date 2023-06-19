@@ -1,4 +1,4 @@
-import { Vec2 } from './vec2'
+import { distanceTo, newVec2, type Vec2 } from '../Utils/vec2'
 
 type Point = Vec2
 
@@ -9,8 +9,8 @@ export class Bounds {
 	}
 	union(other: Bounds): Bounds {
 		return new Bounds(
-			new Vec2(Math.min(this.min.x, other.min.x), Math.min(this.min.y, other.min.y)),
-			new Vec2(Math.max(this.max.x, other.max.x), Math.max(this.max.y, other.max.y))
+			newVec2(Math.min(this.min.x, other.min.x), Math.min(this.min.y, other.min.y)),
+			newVec2(Math.max(this.max.x, other.max.x), Math.max(this.max.y, other.max.y))
 		)
 	}
 }
@@ -22,9 +22,10 @@ export type Shape = {
 	contains(point: Point): boolean
 } & Point
 
-export class Rect extends Vec2 implements Shape {
+export class Rect implements Shape {
 	constructor(public x: number, public y: number, public width: number, public height: number) {
-		super(x, y)
+		this.x = x
+		this.y = y
 	}
 	insideOf(parent: Shape): boolean {
 		const { min, max } = this.toBounds()
@@ -34,10 +35,10 @@ export class Rect extends Vec2 implements Shape {
 		return new Rect(this.x, this.y, this.width, this.height)
 	}
 	toBounds(): Bounds {
-		return new Bounds(new Vec2(this.x, this.y), new Vec2(this.x + this.width, this.y + this.height))
+		return new Bounds(newVec2(this.x, this.y), newVec2(this.x + this.width, this.y + this.height))
 	}
 	getCenter(): Point {
-		return new Vec2((this.x + this.width) / 2, (this.y + this.height) / 2)
+		return newVec2((this.x + this.width) / 2, (this.y + this.height) / 2)
 	}
 	contains(point: Point): boolean {
 		return (
@@ -49,14 +50,15 @@ export class Rect extends Vec2 implements Shape {
 	}
 }
 
-export class Circle extends Vec2 implements Shape {
+export class Circle implements Shape {
 	constructor(public x: number, public y: number, public radius: number) {
-		super(x, y)
+		this.x = x
+		this.y = y
 	}
 	insideOf(parent: Shape): boolean {
 		if (parent instanceof Circle) {
 			if (parent.radius <= this.radius) return false
-			const dist = this.distanceTo(parent)
+			const dist = distanceTo(newVec2(this.x, this.y), parent)
 			return dist + this.radius <= parent.radius
 		} else if (parent instanceof Rect) {
 			const { min, max } = this.getBounding().toBounds()
@@ -74,9 +76,9 @@ export class Circle extends Vec2 implements Shape {
 		} as Rect
 	}
 	getCenter(): Point {
-		return new Vec2(this.x, this.y)
+		return newVec2(this.x, this.y)
 	}
 	contains(point: Point): boolean {
-		return this.distanceTo(point) <= this.radius
+		return distanceTo(newVec2(this.x, this.y), point) <= this.radius
 	}
 }

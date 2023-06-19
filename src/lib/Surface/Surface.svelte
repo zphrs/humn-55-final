@@ -2,6 +2,9 @@
 	import { type SideOffset, SIDES, type Side, defaultSideOffset } from './surface'
 	import { NO_CONTEXT, type ContextWrapper } from './context'
 	import { getContext, onMount, setContext } from 'svelte'
+	import { gridToCSSVariables } from './grid'
+	import type { Grid } from './grid'
+	import { onDestroy } from 'svelte/internal'
 	import { browser } from '$app/environment'
 	/** sides of the parent surface to align to. If no parent it will align to the top of the
 	 * window
@@ -20,7 +23,7 @@
 
 	$: hasAlign = Object.values(alignTo).some((v) => v != undefined)
 	setContext('setGridParams', setGridParams)
-	setContext('setContext', context.ctx)
+	$: context && setContext('setContext', context.ctx)
 	getContext('gestures')
 	/** number of tiles */
 	export let width: number | undefined = undefined
@@ -75,16 +78,15 @@
 		lastTime = null
 	}
 
-	onMount(() => {
-		if (elem) {
+	function setupContext() {
+		if (elem && context) {
 			context.addRestartListener(restartUpdateLoop)
-			const unsub = context.init(elem) || (() => {})
-			return () => {
-				context.removeRestartListener(restartUpdateLoop)
-				unsub()
-			}
+			restartUpdateLoop()
+			return context.init(elem) || (() => {})
 		}
-	})
+		return () => {}
+	}
+	$: context != undefined && onDestroy(setupContext())
 </script>
 
 <div

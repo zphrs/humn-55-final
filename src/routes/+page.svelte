@@ -1,3 +1,7 @@
+<script>
+	import Vis from '../components/Vis.svelte'
+</script>
+
 <main>
 	<h1>How to lead a social movement in the digital age:</h1>
 	<p>
@@ -11,8 +15,9 @@
 		can. They do this by running experiments millions of times every second on billions of users
 		worldwide. The algorithm then learns what content keeps people - especially people similar to
 		you - on the platform for longer, watching more ads. Then it shows you that content which got
-		others to stay on their app for longer. Don't believe me? Look at this visualization of witter:
+		others to stay on their app for longer. Don't believe me? Look at this visualization of Twitter:
 	</p>
+	<Vis />
 </main>
 
 <style>

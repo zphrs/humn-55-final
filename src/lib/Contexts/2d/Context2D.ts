@@ -259,9 +259,10 @@ export function createContext2D(
 		},
 		init: (parent) => {
 			if (!canvas) {
-				throw new Error(
+				console.warn(
 					'This context was linkely created as a child and so does not need to be initialized.'
 				)
+				return
 			}
 			out.addRestartListener(() => {
 				out.needsUpdate = true
@@ -277,6 +278,7 @@ export function createContext2D(
 				canvas.width = parent.clientWidth * devicePixelRatio
 				canvas.height = parent.clientHeight * devicePixelRatio
 				out.ctx.canvasCtx.scale(devicePixelRatio, devicePixelRatio)
+				restartListener()
 			}
 			// run to initially set sizes
 			setSizes()
@@ -316,16 +318,16 @@ export function createContext2D(
 			return draw
 		},
 		draw(ctx) {
-			// clear the canvas
-			if (canvas) {
-				ctx.canvasCtx.clearRect(0, 0, ctx.canvasCtx.canvas.width, ctx.canvasCtx.canvas.height)
-			}
+			ctx.canvasCtx.clearRect(0, 0, ctx.canvasCtx.canvas.width, ctx.canvasCtx.canvas.height)
 			// transform the canvas
 			const { pos, scale } = getCurrentState(animationInfo)
 			// save the current state
 			ctx.canvasCtx.save()
 			ctx.canvasCtx.imageSmoothingEnabled = true
-			ctx.canvasCtx.translate(ctx.canvasCtx.canvas.width / 2, ctx.canvasCtx.canvas.height / 2)
+			ctx.canvasCtx.translate(
+				ctx.canvasCtx.canvas.width / 2 / devicePixelRatio,
+				ctx.canvasCtx.canvas.height / 2 / devicePixelRatio
+			)
 			ctx.canvasCtx.scale(scale, scale)
 			ctx.canvasCtx.translate(...vecToIter(pos))
 			for (const key of keysInObjects) {

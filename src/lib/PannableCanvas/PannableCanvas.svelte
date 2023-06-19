@@ -29,19 +29,20 @@
 	} from '$lib/Contexts/2d/Context2D'
 	import type { ContextWrapper } from '$lib/Surface/context'
 	import type { DrawableShape } from '$lib/Contexts/DrawableShape'
-	import { getLinearInterp } from '$lib/Contexts/Interp'
+	import { getCubicBezier, getLinearInterp, getSlerp } from '$lib/Contexts/Interp'
 	import {
 		createAnimationInfo,
 		type AnimationInfo,
 		modifyTo,
 		updateAnimationInfo
 	} from '$lib/Contexts/Animate'
+	import { browser } from '$app/environment'
 
-	export let canvas: HTMLCanvasElement
+	let canvas: HTMLCanvasElement
 	export let pointersWritable: Writable<PointersDict> = writable({})
 	export let pointersWritableProxy: Writable<PointersDict> = writable({})
 	export let pPan: (e: CustomEvent<PanEvent>, ctx: CanvasRenderingContext2D) => boolean = () => true
-	export let context: ContextWrapper<Context2D> | null
+	export let context: ContextWrapper<Context2D> | undefined = undefined
 
 	const restartListeners = new Set<() => void>()
 
@@ -66,15 +67,13 @@
 	}>()
 	let ctx: CanvasRenderingContext2D | null
 	$: {
-		ctx = canvas?.getContext('2d')
-		if (ctx) {
+		if (browser) {
+			context = createContext2D({
+				interp: getLinearInterp(0.05)
+			})
+			ctx = context.ctx.canvasCtx
+			canvas = ctx.canvas
 			dispatch('initialized')
-			context = createContext2D(
-				{
-					interp: getLinearInterp(0.5)
-				},
-				ctx
-			)
 		}
 	}
 
@@ -152,8 +151,8 @@
 		const oldZoom = context.ctx.getScale()
 		const newZoom = oldZoom * scaleAmount
 		context.ctx.setScale(newZoom)
-		const xOffset = relativeX - ctx.canvas.width / 2
-		const yOffset = relativeY - ctx.canvas.height / 2
+		const xOffset = relativeX - ctx.canvas.width / 2 / devicePixelRatio
+		const yOffset = relativeY - ctx.canvas.height / 2 / devicePixelRatio
 		context.ctx.setPosToVec(
 			addVec(
 				context.ctx.getPos(),
@@ -178,7 +177,7 @@
 </script>
 
 <GestureCanvas
-	bind:canvas
+	canvas={context && context.ctx.canvasCtx.canvas ? context.ctx.canvasCtx.canvas : undefined}
 	on:ppanstart={(e) => {
 		saveZoomTranslate()
 		dispatch('ppanstart', e.detail)

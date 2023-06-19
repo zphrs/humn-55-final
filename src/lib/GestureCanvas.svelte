@@ -23,14 +23,8 @@
 		ptap: PEvent
 	}>()
 
-	export let canvas: HTMLCanvasElement
-</script>
-
-<canvas bind:this={canvas} use:addMoreEvents={dispatch} />
-
-<style>
-	canvas {
-		width: 100%;
-		height: 100%;
+	export let canvas: HTMLCanvasElement | undefined = undefined
+	$: if (canvas) {
+		addMoreEvents(canvas, dispatch)
 	}
-</style>
+</script>
