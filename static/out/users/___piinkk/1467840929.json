@@ -1,0 +1,74 @@
+[
+	{
+		"id": "750805393278775296",
+		"date": 1467840929000,
+		"rawContent": "Jaedon's not the best singer but his song \ud83d\ude0c #AltonSterling #blacklivesmatter https://t.co/kqqc0NpxjY",
+		"userId": 4093088833,
+		"media": [
+			{
+				"thumbnailUrl": "https://pbs.twimg.com/ext_tw_video_thumb/750805244712325120/pu/img/GfmhP079dubm9oQD.jpg",
+				"variants": [
+					"https://video.twimg.com/ext_tw_video/750805244712325120/pu/vid/480x480/mEllOUkXnOO2WSD_.mp4",
+					"https://video.twimg.com/ext_tw_video/750805244712325120/pu/vid/240x240/nNeH-gL3Wf0aIt3O.mp4",
+					"https://video.twimg.com/ext_tw_video/750805244712325120/pu/pl/XvrlqDvAhLXlkZMn.m3u8"
+				]
+			}
+		],
+		"username": "___piinkk",
+		"containsBlackLivesMatter": true,
+		"containsBlueLivesMatter": false,
+		"containsMeToo": false,
+		"containsClimate": false,
+		"rollingTweetsPerMonth": 1.0,
+		"sumOfBlackLivesMatter": 1,
+		"sumOfBlueLivesMatter": 0,
+		"sumOfMeToo": 0,
+		"sumOfClimate": 0,
+		"rollingSumOfBlackLivesMatter": 1.0,
+		"rollingSumOfBlueLivesMatter": 0.0,
+		"rollingSumOfMeToo": 0.0,
+		"rollingSumOfClimate": 0.0
+	},
+	{
+		"id": "751294101694189568",
+		"date": 1467957446000,
+		"rawContent": "#BlackLivesMatter doesn't mean go kill white people \ud83d\udcaf",
+		"userId": 4093088833,
+		"media": null,
+		"username": "___piinkk",
+		"containsBlackLivesMatter": true,
+		"containsBlueLivesMatter": false,
+		"containsMeToo": false,
+		"containsClimate": false,
+		"rollingTweetsPerMonth": 2.0,
+		"sumOfBlackLivesMatter": 2,
+		"sumOfBlueLivesMatter": 0,
+		"sumOfMeToo": 0,
+		"sumOfClimate": 0,
+		"rollingSumOfBlackLivesMatter": 2.0,
+		"rollingSumOfBlueLivesMatter": 0.0,
+		"rollingSumOfMeToo": 0.0,
+		"rollingSumOfClimate": 0.0
+	},
+	{
+		"id": "751294445555900417",
+		"date": 1467957528000,
+		"rawContent": "Don't get me wrong what some of these policemen are doing is completely wrong and yeah I hate it \ud83d\udcaf #BlackLivesMatter",
+		"userId": 4093088833,
+		"media": null,
+		"username": "___piinkk",
+		"containsBlackLivesMatter": true,
+		"containsBlueLivesMatter": false,
+		"containsMeToo": false,
+		"containsClimate": false,
+		"rollingTweetsPerMonth": 3.0,
+		"sumOfBlackLivesMatter": 3,
+		"sumOfBlueLivesMatter": 0,
+		"sumOfMeToo": 0,
+		"sumOfClimate": 0,
+		"rollingSumOfBlackLivesMatter": 3.0,
+		"rollingSumOfBlueLivesMatter": 0.0,
+		"rollingSumOfMeToo": 0.0,
+		"rollingSumOfClimate": 0.0
+	}
+]
