@@ -1,5 +1,6 @@
 <script>
 	import { browser } from '$app/environment'
+	import Surface from '$lib/Surface/Surface.svelte'
 	import Vis from '../components/Vis.svelte'
 </script>
 
@@ -30,6 +31,8 @@
 	<h2>Visualization (WIP)</h2>
 	{#if browser}
 		<Vis />
+	{:else}
+		<Surface width={50} height={30} />
 	{/if}
 	<h2>How we incorporated Data Feminism</h2>
 	<p>By making the visualization interractive, we allow the user to explore the data themselves.</p>

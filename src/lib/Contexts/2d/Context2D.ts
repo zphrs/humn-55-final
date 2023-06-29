@@ -78,21 +78,24 @@ export type Context2D = Readonly<{
 		y: number,
 		scale: number,
 		shapeConfig?: ShapeConfig
-	) => ContextWrapper<Context2D> & DrawableShape<ScalePos>
+	) => ContextWrapper<Context2D> & DrawableShape<ScalePos> & Deletable
 	setChildScale: (child: ContextWrapper<Context2D> & DrawableShape<ScalePos>, scale: number) => void
 	setChildPos: (
 		child: ContextWrapper<Context2D> & DrawableShape<ScalePos>,
 		x: number,
 		y: number
 	) => void
+	removeChild: (child: Deletable) => void
 }> & { pos: Vec2; scale: number }
 
 export type ScalePos = { scale: number; pos: Vec2 }
 
+type Deletable = { delete: () => void }
+
 export function createContext2D(
 	config: ShapeConfig = {},
 	canvasContext?: CanvasRenderingContext2D
-): ContextWrapper<Context2D> & DrawableShape<ScalePos> {
+): ContextWrapper<Context2D> & DrawableShape<ScalePos> & Deletable {
 	const fullConfig = completeShapeConfig(config)
 	const { interp } = fullConfig
 	const animationInfo = createAnimationInfo<ScalePos>({ scale: 1, pos: newVec2(0, 0) }, interp)
@@ -114,7 +117,6 @@ export function createContext2D(
 	}
 	let keysInObjects = [0]
 	type extendableKeyToKeyOrNumber = unknown extends KeyToKeyOrNumber ? KeyToKeyOrNumber : never
-	type Deletable = { delete: () => void }
 	const restartListeners = new Set<() => void>()
 
 	function restartListener() {
@@ -238,6 +240,7 @@ export function createContext2D(
 						obj.delete()
 					}
 				}
+				out.deleteWhenDoneUpdating = true
 			},
 			setChildScale: function (child: ContextWrapper<Context2D>, scale: number): void {
 				child.ctx.setScale(scale)
@@ -258,6 +261,10 @@ export function createContext2D(
 				})
 				restartListener()
 				return child
+			},
+			removeChild: function (child: Deletable) {
+				child.delete()
+				restartListener()
 			}
 		},
 		init: (parent) => {

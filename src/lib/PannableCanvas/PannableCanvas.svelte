@@ -140,7 +140,8 @@
 
 	function onZoom(e: CustomEvent<ZoomEvent>) {
 		if (!ctx || !canvas || !context) return
-		const { scaleAmount, relativeX, relativeY } = e.detail
+		let { scaleAmount, relativeX, relativeY } = e.detail
+		scaleAmount = Math.abs(scaleAmount)
 		const oldZoom = context.ctx.getScale()
 		const newZoom = oldZoom * scaleAmount
 		context.ctx.setScale(newZoom)

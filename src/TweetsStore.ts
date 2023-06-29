@@ -2,7 +2,7 @@ import { readable, type Readable } from 'svelte/store'
 import { base } from '$app/paths'
 import type { Rect } from '$lib/PannableCanvas/sizes'
 import { browser } from '$app/environment'
-export type TimestampRange = [Date, Date]
+export type TimestampRange = [number, number]
 export type UserProfile = {
 	activeDateRanges: TimestampRange[]
 	user: '000e151_'
@@ -17,6 +17,7 @@ export type UserProfile = {
 	}
 	/** numbers are between 0 and 1 */
 	randomPos: [number, number]
+	randomPosX: number
 	randomPosY: number
 }
 
@@ -30,7 +31,7 @@ export type Tweet = {
 	date: Date
 	rawContent: string
 	media: null | ({ thumbnailUrl: string; variants: string[] } | string)[]
-	username: '000e151_'
+	username: string
 	containsBlackLivesMatter: boolean
 	containsBlueLivesMatter: boolean
 	containsMeToo: boolean
@@ -54,46 +55,61 @@ export function parseTweet(tweet: Tweet) {
 export async function saturateUserProfile(
 	db: IDBDatabase,
 	userProfile: UserProfile,
-	timestampRange: TimestampRange
+	timestampRange: TimestampRange,
+	signal: AbortSignal
 ): Promise<SaturatedUserProfile> {
-	const tweets = await getTweetsInRange(db, userProfile, timestampRange)
+	const tweets = await getTweetsInRange(db, userProfile, timestampRange, signal)
 	return { ...userProfile, tweets, timestampRange }
 }
 
 export async function getTweetsInRange(
 	db: IDBDatabase,
 	userProfile: UserProfile,
-	timestampRange: TimestampRange
+	timestampRange: TimestampRange,
+	signal: AbortSignal
 ): Promise<Tweet[]> {
-	const [start, end] = timestampRange
+	const [start, end] = timestampRange.map((e) => new Date(e * 1000))
 	// try to get tweets from the db
 	const tweets = await getTweetsFromDb(db, userProfile.user, start, end)
-	if (tweets) return tweets
+	if (tweets && tweets.length > 0) return tweets
 
 	const dbUpToDatePromises = []
 	for (const timestamps of userProfile.activeDateRanges) {
 		const [tsStart, tsEnd] = timestamps
-		if (tsEnd < start) continue
-		if (tsStart > end) continue
-		const tweets = await getTweetsFromApi(userProfile.user, tsStart)
+		if (tsEnd * 1000 < start.getTime()) continue
+		if (tsStart * 1000 > end.getTime()) continue
+		const tweets = await getTweetsFromApi(userProfile.user, new Date(tsStart * 1000), signal)
 		if (!tweets) continue
 		// add tweets to db
 		const tweetStore = db.transaction('tweets', 'readwrite').objectStore('tweets')
-		dbUpToDatePromises.push(Promise.all(tweets.map((tweet) => wrapRequest(tweetStore.add(tweet)))))
+		dbUpToDatePromises.push(Promise.all(tweets.map((tweet) => wrapRequest(tweetStore.put(tweet)))))
 	}
 	await Promise.all(dbUpToDatePromises)
+	await new Promise((resolve) => {
+		setTimeout(resolve, 100)
+	})
 
 	const tweets2 = await getTweetsFromDb(db, userProfile.user, start, end)
-	if (!tweets2) throw new Error('tweets2 is undefined unexpectedly')
+	if (tweets2 === undefined) throw new Error('tweets2 is undefined unexpectedly')
 	return tweets2
 }
 
-export async function getTweetsFromApi(user: string, start: Date): Promise<Tweet[] | undefined> {
+export async function getTweetsFromApi(
+	user: string,
+	start: Date,
+	signal: AbortSignal
+): Promise<Tweet[] | undefined> {
 	// ex: /data/users/000e151_/1616466969.json
 	// convert to seconds
 	const startSeconds = Math.floor(start.getTime() / 1000)
 	const url = `${base}/data/users/${user}/${startSeconds}.json`
-	const res = await fetch(url)
+	let res
+	try {
+		res = await fetch(url, { signal })
+	} catch (e) {
+		console.error(e)
+		return undefined
+	}
 	if (!res.ok) return undefined
 	const tweets = await res.json()
 
@@ -111,7 +127,7 @@ export async function getTweetsFromDb(
 		const tweets = await wrapRequest(
 			tweetStore.index('username_date').getAll(IDBKeyRange.bound([user, start], [user, end]))
 		)
-		return tweets.length > 0 ? (tweets as Tweet[]) : undefined
+		return tweets !== undefined ? (tweets as Tweet[]) : undefined
 	} catch (e) {
 		console.error(e)
 		return undefined
@@ -120,7 +136,7 @@ export async function getTweetsFromDb(
 
 export const db: Readable<IDBDatabase | undefined> = readable(undefined, (set) => {
 	if (!browser) return
-	const request = indexedDB.open('tweets', 2)
+	const request = indexedDB.open('tweets', 6)
 	request.onupgradeneeded = async () => {
 		const db = request.result
 
@@ -144,33 +160,42 @@ export const db: Readable<IDBDatabase | undefined> = readable(undefined, (set) =
 
 		const userStore = db.createObjectStore('users', { keyPath: 'user' })
 		userStore.createIndex('username', 'user', { unique: true })
-		userStore.createIndex('randomPos', 'randomPos', { unique: false })
+		userStore.createIndex('randomPosX', 'randomPosX', { unique: false })
 		// add index for [1] of randomPos
 		userStore.createIndex('randomPosY', 'randomPosY', { unique: false })
 		// fetch activeDateRanges.json and put it in the db
 		const activeDateRanges: { [username: string]: UserProfile } = await fetch(
 			`${base}/data/activeDateRanges.json`
 		).then((res) => res.json())
+		console.log('fetched')
 		const newTransaction = db.transaction(['users'], 'readwrite')
 		const objectStore = newTransaction.objectStore('users')
 		// store the activeDateRanges in the userStore
 		for (const username of Object.keys(activeDateRanges)) {
+			activeDateRanges[username].randomPosX = activeDateRanges[username].randomPos[0]
 			activeDateRanges[username].randomPosY = activeDateRanges[username].randomPos[1]
-			objectStore.put(activeDateRanges[username])
+			activeDateRanges[username].activeDateRanges = activeDateRanges[username].activeDateRanges.map(
+				(e) => e.map((ts: number) => Number.parseInt(ts as unknown as string)) as TimestampRange
+			)
+			userStore.put(activeDateRanges[username])
 		}
 		set(db as any)
 	}
 	request.onsuccess = async (e: any) => {
 		const db: IDBDatabase = e.target.result
-		// const activeDateRanges: { [username: string]: UserProfile } = await fetch(
-		// 	`${base}/data/activeDateRanges.json`
-		// ).then((res) => res.json())
-		// console.log(activeDateRanges)
-		// const userStore = db.transaction(['users'], 'readwrite').objectStore('users')
-		// // store the activeDateRanges in the userStore
-		// for (const username of Object.keys(activeDateRanges)) {
-		// 	userStore.put(activeDateRanges[username])
-		// }
+		const activeDateRanges: { [username: string]: UserProfile } = await fetch(
+			`${base}/data/activeDateRanges.json`
+		).then((res) => res.json())
+		const userStore = db.transaction(['users'], 'readwrite').objectStore('users')
+		// store the activeDateRanges in the userStore
+		for (const username of Object.keys(activeDateRanges)) {
+			activeDateRanges[username].randomPosX = activeDateRanges[username].randomPos[0]
+			activeDateRanges[username].randomPosY = activeDateRanges[username].randomPos[1]
+			activeDateRanges[username].activeDateRanges = activeDateRanges[username].activeDateRanges.map(
+				(e) => e.map((ts: number) => Number.parseInt(ts as unknown as string)) as TimestampRange
+			)
+			userStore.put(activeDateRanges[username])
+		}
 		set(db as any)
 	}
 })
@@ -187,10 +212,10 @@ export async function getUsersFromRect(db: IDBDatabase, rect: Rect) {
 	const users = await new Promise<UserProfile[]>(async (resolve) => {
 		const transaction = db.transaction(['users'], 'readonly')
 		const store = transaction.objectStore('users')
-		const index = store.index('randomPos')
-		const range = IDBKeyRange.bound([rect.x, rect.y], [rect.x + rect.width, rect.y + rect.height])
+		const xIndex = store.index('randomPosX')
+		const xRange = IDBKeyRange.bound(rect.x, rect.x + rect.width)
 		// get how many users are in the rect
-		const xCountRequest = index.count(range)
+		const xCountRequest = xIndex.count(xRange)
 
 		const yIndex = store.index('randomPosY')
 		const yRange = IDBKeyRange.bound(rect.y, rect.y + rect.height)
@@ -201,8 +226,8 @@ export async function getUsersFromRect(db: IDBDatabase, rect: Rect) {
 			wrapRequest(yCountRequest)
 		])
 		// get using the index which is smaller
-		const indexToUse = xCount < yCount ? index : yIndex
-		const rangeToUse = xCount < yCount ? range : yRange
+		const indexToUse = xCount < yCount ? xIndex : yIndex
+		const rangeToUse = xCount < yCount ? xRange : yRange
 		const request = indexToUse.getAll(rangeToUse)
 		request.onsuccess = () => {
 			// verify that the users are in the rect

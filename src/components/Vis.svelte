@@ -7,12 +7,13 @@
 	import { Rect } from '$lib/PannableCanvas/sizes'
 	import type { Dot } from '$lib/Contexts/2d/Dot'
 	import { getSlerp } from '$lib/Contexts/Interp'
+	import DotElem from './Dot.svelte'
 	let context: ContextWrapper<Context2D> | undefined = undefined
-	let userProfiles: UserProfile[] = []
 	let dots: Map<string, Dot> = new Map()
 	let getScreenSize: () => Rect
 	let sliderValue = 0
 	let dotsContext: ContextWrapper<Context2D> | undefined = undefined
+	let usersOnScreen: UserProfile[] = []
 	const init = () => {
 		if (!context) throw new Error('Context is null after init')
 		context.ctx.setScale(
@@ -22,12 +23,23 @@
 		// let dot = context.ctx.addDot(0, 0, 10)
 	}
 	$: console.log($db)
-	$: if ($db)
-		getUsersFromRect($db, new Rect(0, 0, 1, 1)).then((users) => {
-			userProfiles = users
-		})
 
 	$: if (context && $db) getDots()
+	$: if (context && $db) addBlankDots()
+
+	function addBlankDots() {
+		if (!dotsContext) throw new Error('Context is null after init')
+		const { ctx } = dotsContext
+		if (!$db) return
+		const rect = new Rect(0, 0, 1, 1)
+		getUsersFromRect($db, rect).then((users) => {
+			for (let user of users) {
+				ctx.addDot(...user.randomPos, 0.001, {
+					color: '#979998'
+				})
+			}
+		})
+	}
 	let timeout: number | undefined = undefined
 	function getDots(fromTimeout = false) {
 		if (!fromTimeout) {
@@ -44,9 +56,9 @@
 		rect.x += 0.5
 		rect.y += 0.5
 		getUsersFromRect($db, rect).then((users) => {
-			userProfiles = users
 			const usersOffScreen = new Set(dots.keys())
-			for (let user of userProfiles) {
+			usersOnScreen = users
+			for (let user of users) {
 				usersOffScreen.delete(user.user)
 				if (!dots.has(user.user)) {
 					dots.set(user.user, ctx.addDot(...user.randomPos, 0.001))
@@ -72,6 +84,15 @@
 			bind:context
 			on:initialized={init}
 		/>
+		{#if usersOnScreen.length > 0 && usersOnScreen.length < 5000 && $db}
+			{#each usersOnScreen as user (user.user)}
+				<DotElem
+					{user}
+					currentTimestampRange={[new Date('January 1 2010'), new Date('January 1 2018')]}
+					db={$db}
+				/>
+			{/each}
+		{/if}
 	</Surface>
 	<div class="timeline">
 		<input type="range" min="0" max="1" step="0.01" bind:value={sliderValue} />
@@ -87,6 +108,7 @@
 	}
 	.timeline {
 		margin: 1rem;
+		position: relative;
 	}
 	input {
 		width: 100%;
@@ -96,10 +118,10 @@
 	}
 	.label.left {
 		left: 0;
-		transform: translate(100%, 50%);
+		transform: translate(0%, 50%);
 	}
 	.label.right {
 		right: 0;
-		transform: translate(-100%, 50%);
+		transform: translate(0%, 50%);
 	}
 </style>
