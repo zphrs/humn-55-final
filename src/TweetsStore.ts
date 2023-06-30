@@ -5,6 +5,7 @@ import { browser } from '$app/environment'
 export type TimestampRange = [number, number]
 export type UserProfile = {
 	activeDateRanges: TimestampRange[]
+	cachedDateRanges: number[]
 	user: '000e151_'
 	rangeStats: {
 		userAffiliation: {
@@ -69,16 +70,18 @@ export async function getTweetsInRange(
 	signal: AbortSignal
 ): Promise<Tweet[]> {
 	const [start, end] = timestampRange.map((e) => new Date(e * 1000))
-	// try to get tweets from the db
-	const tweets = await getTweetsFromDb(db, userProfile.user, start, end)
-	if (tweets && tweets.length > 0) return tweets
 
 	const dbUpToDatePromises = []
 	for (const timestamps of userProfile.activeDateRanges) {
 		const [tsStart, tsEnd] = timestamps
-		if (tsEnd * 1000 < start.getTime()) continue
-		if (tsStart * 1000 > end.getTime()) continue
+		if (tsStart > end.getTime() / 1000) continue
+		if (tsEnd < start.getTime() / 1000) continue
+		if (userProfile.cachedDateRanges.includes(tsStart)) {
+			console.log('already loaded in')
+			continue
+		}
 		const tweets = await getTweetsFromApi(userProfile.user, new Date(tsStart * 1000), signal)
+		markTweetJSONAsFetched(db, userProfile, tsStart)
 		if (!tweets) continue
 		// add tweets to db
 		const tweetStore = db.transaction('tweets', 'readwrite').objectStore('tweets')
@@ -89,9 +92,9 @@ export async function getTweetsInRange(
 		setTimeout(resolve, 100)
 	})
 
-	const tweets2 = await getTweetsFromDb(db, userProfile.user, start, end)
-	if (tweets2 === undefined) throw new Error('tweets2 is undefined unexpectedly')
-	return tweets2
+	const tweets = await getTweetsFromDb(db, userProfile.user, start, end)
+	if (tweets === undefined) throw new Error('tweets2 is undefined unexpectedly')
+	return tweets
 }
 
 export async function getTweetsFromApi(
@@ -106,13 +109,34 @@ export async function getTweetsFromApi(
 	let res
 	try {
 		res = await fetch(url, { signal })
-	} catch (e) {
-		console.error(e)
+	} catch (e: any) {
+		if (e.name === 'TypeError') {
+			await new Promise((resolve) => setTimeout(resolve, 100))
+			return getTweetsFromApi(user, start, signal)
+		} else console.error(e)
 		return undefined
 	}
 	if (!res.ok) return undefined
 	const tweets = await res.json()
 
+	return tweets.map(parseTweet)
+}
+
+const batched_fetches = new Set()
+
+const interval: number | undefined = undefined
+
+async function fetch_batched(url: string, signal: AbortSignal) {
+	const res = await fetch(url, { signal })
+	if (!res.ok) return undefined
+	const tweets = await res.json()
+	return tweets.map(parseTweet)
+}
+
+async function _fetch_batched(url: string, signal: AbortSignal) {
+	const res = await fetch(url, { signal })
+	if (!res.ok) return undefined
+	const tweets = await res.json()
 	return tweets.map(parseTweet)
 }
 
@@ -177,6 +201,7 @@ export const db: Readable<IDBDatabase | undefined> = readable(undefined, (set) =
 			activeDateRanges[username].activeDateRanges = activeDateRanges[username].activeDateRanges.map(
 				(e) => e.map((ts: number) => Number.parseInt(ts as unknown as string)) as TimestampRange
 			)
+			activeDateRanges[username].cachedDateRanges = []
 			userStore.put(activeDateRanges[username])
 		}
 		set(db as any)
@@ -194,6 +219,7 @@ export const db: Readable<IDBDatabase | undefined> = readable(undefined, (set) =
 			activeDateRanges[username].activeDateRanges = activeDateRanges[username].activeDateRanges.map(
 				(e) => e.map((ts: number) => Number.parseInt(ts as unknown as string)) as TimestampRange
 			)
+			activeDateRanges[username].cachedDateRanges = []
 			userStore.put(activeDateRanges[username])
 		}
 		set(db as any)
@@ -205,6 +231,13 @@ async function wrapRequest<T>(request: IDBRequest<T>) {
 		request.onsuccess = () => resolve(request.result)
 		request.onerror = () => reject(request.error)
 	})
+}
+
+async function markTweetJSONAsFetched(db: IDBDatabase, user: UserProfile, timestamp: number) {
+	user.cachedDateRanges.push(timestamp)
+	// put to users object store the updated user
+	const userStore = db.transaction(['users'], 'readwrite').objectStore('users')
+	await wrapRequest(userStore.put(user))
 }
 
 export async function getUsersFromRect(db: IDBDatabase, rect: Rect) {

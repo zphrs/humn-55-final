@@ -240,6 +240,7 @@ export function createContext2D(
 						obj.delete()
 					}
 				}
+				out.needsUpdate = true
 				out.deleteWhenDoneUpdating = true
 			},
 			setChildScale: function (child: ContextWrapper<Context2D>, scale: number): void {
@@ -306,8 +307,6 @@ export function createContext2D(
 			let draw = false
 			if (updateAnimationInfo(animationInfo, dt)) {
 				draw = true
-			} else if (out.deleteWhenDoneUpdating) {
-				return false
 			}
 			// loop through the in-order keys
 			for (const key of keysInObjects) {
@@ -358,8 +357,8 @@ export function createContext2D(
 			restartListeners.delete(listener)
 		},
 		delete: () => {
-			modifyTo(animationInfo, { scale: 0 })
-			out.deleteWhenDoneUpdating = true
+			// modifyTo(animationInfo, { scale: 0 })
+			out.ctx.delete()
 		}
 	}
 	out.addRestartListener(() => {

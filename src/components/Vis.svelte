@@ -56,21 +56,7 @@
 		rect.x += 0.5
 		rect.y += 0.5
 		getUsersFromRect($db, rect).then((users) => {
-			const usersOffScreen = new Set(dots.keys())
 			usersOnScreen = users
-			for (let user of users) {
-				usersOffScreen.delete(user.user)
-				if (!dots.has(user.user)) {
-					dots.set(user.user, ctx.addDot(...user.randomPos, 0.001))
-				}
-			}
-			for (let user of usersOffScreen) {
-				let dot = dots.get(user)
-				if (dot) {
-					ctx.removeDot(dot)
-					if (!dots.delete(user)) throw new Error('Failed to delete dot')
-				}
-			}
 		})
 	}
 	// $: window.getUsersFromRect = getUsersFromRect.bind(null, $db, new Rect(0, 0, 0.01, 0.01))
@@ -84,11 +70,11 @@
 			bind:context
 			on:initialized={init}
 		/>
-		{#if usersOnScreen.length > 0 && usersOnScreen.length < 5000 && $db}
+		{#if usersOnScreen.length > 0 && usersOnScreen.length < 10000 && $db}
 			{#each usersOnScreen as user (user.user)}
 				<DotElem
 					{user}
-					currentTimestampRange={[new Date('January 1 2010'), new Date('January 1 2018')]}
+					currentTimestampRange={[new Date('January 1 2019'), new Date('January 1 2022')]}
 					db={$db}
 				/>
 			{/each}

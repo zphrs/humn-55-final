@@ -8,7 +8,7 @@
 		type UserProfile
 	} from '../TweetsStore'
 	import type { DrawableShape } from '$lib/Contexts/DrawableShape'
-	import type { Vec2 } from '$lib/Utils/vec2'
+	import { mulScalar, vecToIter, type Vec2, normalize } from '$lib/Utils/vec2'
 	import type { DrawableObject } from '$lib/Surface/context'
 	import type { Dot } from '$lib/Contexts/2d/Dot'
 	import { SQRT_3_OVER_2 } from '$lib/Utils/constants'
@@ -34,30 +34,33 @@
 		0.001
 	)
 	const loaded = drawable.ctx.addDot(0, 0, 0, {
-		color: '#ffffff',
+		color: '#000',
 		interp
 	})
 	const dots = {
-		metoo: drawable.ctx.addRect(0, 1, 0, 0, {
-			color: '#ffd140',
+		metoo: drawable.ctx.addDot(0, 1, 0, {
+			color: '#ffd14080',
 			interp
 		}),
-		blacklm: drawable.ctx.addRect(1, 0, 0, 0, {
-			color: '#f58f53',
+		blacklm: drawable.ctx.addDot(1, 0, 0, {
+			color: '#f58f5380',
 			interp
 		}),
-		bluelm: drawable.ctx.addRect(-1, 0, 0, 0, {
-			color: '#a8a9f4',
+		bluelm: drawable.ctx.addDot(-1, 0, 0, {
+			color: '#a8a9f480',
 			interp
 		}),
-		climate: drawable.ctx.addRect(0, -1, 0, 0, {
-			color: '#ace9c5',
+		climate: drawable.ctx.addDot(0, -1, 0, {
+			color: '#ace9c580',
 			interp
 		})
 	}
 	async function loadTweets(promise: Promise<Tweet[]>) {
 		tweets = await promise
-		drawable.ctx.setDotRadius(loaded, 0.75)
+		if (tweets.length == 0) {
+			loaded.color = '#e5e6e2'
+		}
+		drawable.ctx.setDotRadius(loaded, 1.01)
 		// sort tweets chronologically
 		tweets.sort((a, b) => a.date.getTime() - b.date.getTime())
 
@@ -71,8 +74,7 @@
 
 		if (tweets.length == 0) {
 			Object.values(dots).map((dot) => {
-				drawable.ctx.setRectWidth(dot, 0)
-				drawable.ctx.setRectHeight(dot, 0)
+				drawable.ctx.setDotRadius(dot, 0)
 			})
 			return
 		}
@@ -101,20 +103,23 @@
 
 		for (const key in stats) {
 			if (Object.prototype.hasOwnProperty.call(stats, key)) {
-				stats[key as keyof typeof stats] /= tweets.length
+				stats[key as keyof typeof stats] /= Math.min(Math.log(tweets.length) * 10, tweets.length)
 			}
 		}
 
 		for (const key in dots) {
 			const dot = dots[key as keyof typeof dots]
 			const scale = stats[key as keyof typeof stats]
-			drawable.ctx.setRectHeight(dot, scale)
-			drawable.ctx.setRectWidth(dot, scale)
+			drawable.ctx.setDotRadius(dot, scale)
+			const vec = normalize(dot.pos)
+			const newVec = mulScalar(vec, Math.max(scale, 1))
+			drawable.ctx.moveDot(dot, ...vecToIter(newVec))
 		}
 	}
 	onMount(() => {
 		return () => {
 			if (!context) return
+			console.log('deleting')
 			context.removeChild(drawable)
 			controller.abort()
 		}
