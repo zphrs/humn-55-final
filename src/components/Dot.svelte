@@ -34,7 +34,7 @@
 		0.001
 	)
 	const loaded = drawable.ctx.addDot(0, 0, 0, {
-		color: '#000',
+		color: '#0008',
 		interp
 	})
 	const dots = {
@@ -58,7 +58,7 @@
 	async function loadTweets(promise: Promise<Tweet[]>) {
 		tweets = await promise
 		if (tweets.length == 0) {
-			loaded.color = '#e5e6e2'
+			loaded.color = '#fff8'
 		}
 		drawable.ctx.setDotRadius(loaded, 1.01)
 		// sort tweets chronologically
@@ -100,10 +100,11 @@
 				stats.metoo++
 			}
 		}
-
 		for (const key in stats) {
 			if (Object.prototype.hasOwnProperty.call(stats, key)) {
-				stats[key as keyof typeof stats] /= Math.min(Math.log(tweets.length) * 10, tweets.length)
+				let k = key as keyof typeof stats
+				const lengthLogged = Math.log(tweets.length + 1)
+				stats[k] /= lengthLogged
 			}
 		}
 

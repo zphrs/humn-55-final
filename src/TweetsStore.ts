@@ -2,6 +2,7 @@ import { readable, type Readable } from 'svelte/store'
 import { base } from '$app/paths'
 import type { Rect } from '$lib/PannableCanvas/sizes'
 import { browser } from '$app/environment'
+import { fetch_batched } from './fetchBatched'
 export type TimestampRange = [number, number]
 export type UserProfile = {
 	activeDateRanges: TimestampRange[]
@@ -89,7 +90,7 @@ export async function getTweetsInRange(
 	}
 	await Promise.all(dbUpToDatePromises)
 	await new Promise((resolve) => {
-		setTimeout(resolve, 100)
+		setTimeout(resolve, 1000)
 	})
 
 	const tweets = await getTweetsFromDb(db, userProfile.user, start, end)
@@ -106,39 +107,17 @@ export async function getTweetsFromApi(
 	// convert to seconds
 	const startSeconds = Math.floor(start.getTime() / 1000)
 	const url = `${base}/data/users/${user}/${startSeconds}.json`
-	let res
-	try {
-		res = await fetch(url, { signal })
-	} catch (e: any) {
-		if (e.name === 'TypeError') {
-			await new Promise((resolve) => setTimeout(resolve, 100))
-			return getTweetsFromApi(user, start, signal)
-		} else console.error(e)
-		return undefined
-	}
-	if (!res.ok) return undefined
-	const tweets = await res.json()
+	console.log('fetching', url)
+	const tweets = await fetch_batched(url, signal)
+	console.log('fetched', url)
+	console.log('got', tweets)
 
-	return tweets.map(parseTweet)
+	return tweets
 }
 
 const batched_fetches = new Set()
 
 const interval: number | undefined = undefined
-
-async function fetch_batched(url: string, signal: AbortSignal) {
-	const res = await fetch(url, { signal })
-	if (!res.ok) return undefined
-	const tweets = await res.json()
-	return tweets.map(parseTweet)
-}
-
-async function _fetch_batched(url: string, signal: AbortSignal) {
-	const res = await fetch(url, { signal })
-	if (!res.ok) return undefined
-	const tweets = await res.json()
-	return tweets.map(parseTweet)
-}
 
 export async function getTweetsFromDb(
 	db: IDBDatabase,
@@ -202,26 +181,12 @@ export const db: Readable<IDBDatabase | undefined> = readable(undefined, (set) =
 				(e) => e.map((ts: number) => Number.parseInt(ts as unknown as string)) as TimestampRange
 			)
 			activeDateRanges[username].cachedDateRanges = []
-			userStore.put(activeDateRanges[username])
+			objectStore.put(activeDateRanges[username])
 		}
 		set(db as any)
 	}
 	request.onsuccess = async (e: any) => {
 		const db: IDBDatabase = e.target.result
-		const activeDateRanges: { [username: string]: UserProfile } = await fetch(
-			`${base}/data/activeDateRanges.json`
-		).then((res) => res.json())
-		const userStore = db.transaction(['users'], 'readwrite').objectStore('users')
-		// store the activeDateRanges in the userStore
-		for (const username of Object.keys(activeDateRanges)) {
-			activeDateRanges[username].randomPosX = activeDateRanges[username].randomPos[0]
-			activeDateRanges[username].randomPosY = activeDateRanges[username].randomPos[1]
-			activeDateRanges[username].activeDateRanges = activeDateRanges[username].activeDateRanges.map(
-				(e) => e.map((ts: number) => Number.parseInt(ts as unknown as string)) as TimestampRange
-			)
-			activeDateRanges[username].cachedDateRanges = []
-			userStore.put(activeDateRanges[username])
-		}
 		set(db as any)
 	}
 })

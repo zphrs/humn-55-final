@@ -70,11 +70,11 @@
 			bind:context
 			on:initialized={init}
 		/>
-		{#if usersOnScreen.length > 0 && usersOnScreen.length < 10000 && $db}
+		{#if usersOnScreen.length > 0 && usersOnScreen.length < 20000 && $db}
 			{#each usersOnScreen as user (user.user)}
 				<DotElem
 					{user}
-					currentTimestampRange={[new Date('January 1 2019'), new Date('January 1 2022')]}
+					currentTimestampRange={[new Date('Oct 15 2017'), new Date('Oct 22 2017')]}
 					db={$db}
 				/>
 			{/each}
