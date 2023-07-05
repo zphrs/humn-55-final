@@ -18,17 +18,19 @@ export async function fetch_batched(url: string, signal: AbortSignal): Promise<T
 			resolve
 		})
 		if (!currentlyFetching) {
-			currentlyFetching = true
 			loop()
 		}
 	})
 }
 
 async function batch_requests(count: number) {
-	const batch = queue.splice(0, count).filter((item) => !item.signal.aborted)
+	console.log('batching', count)
+	queue = queue.filter((item) => !item.signal.aborted)
+	const batch = queue.splice(0, count)
 	await Promise.all(batch.map((req) => fetch_tweets(req)))
 }
 async function loop() {
+	currentlyFetching = true
 	while (true) {
 		console.log('looping')
 		await batch_requests(50)
@@ -39,12 +41,18 @@ async function loop() {
 
 async function fetch_tweets(item: QueueItem) {
 	const { url, signal, resolve } = item
-	const res = await fetch(url, { signal })
-	if (!res.ok) {
-		console.error(`fetch failed: ${res.status} ${res.statusText}`)
-		resolve(undefined)
-		return
+	try {
+		const res = await fetch(url, { signal })
+		if (!res.ok) {
+			console.error(`fetch failed: ${res.status} ${res.statusText}`)
+			resolve(undefined)
+			return
+		}
+		const tweets = await res.json()
+		resolve(tweets.map(parseTweet))
+	} catch (e) {
+		if (item.signal.aborted) return
+		console.error(e)
+		setTimeout(() => fetch_tweets(item), 0)
 	}
-	const tweets = await res.json()
-	resolve(tweets.map(parseTweet))
 }

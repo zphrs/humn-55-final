@@ -7,14 +7,13 @@ export type TimestampRange = [number, number]
 export type UserProfile = {
 	activeDateRanges: TimestampRange[]
 	cachedDateRanges: number[]
-	user: '000e151_'
+	user: string
 	rangeStats: {
 		userAffiliation: {
 			percentBlackLivesMatter: 1.0
 			percentBlueLivesMatter: 0.0
 			percentMeToo: 0.0
 			percentClimate: 0.0
-			user: '000e151_'
 		}
 	}
 	/** numbers are between 0 and 1 */
@@ -89,9 +88,9 @@ export async function getTweetsInRange(
 		dbUpToDatePromises.push(Promise.all(tweets.map((tweet) => wrapRequest(tweetStore.put(tweet)))))
 	}
 	await Promise.all(dbUpToDatePromises)
-	await new Promise((resolve) => {
-		setTimeout(resolve, 1000)
-	})
+	// await new Promise((resolve) => {
+	// 	setTimeout(resolve, 1000)
+	// })
 
 	const tweets = await getTweetsFromDb(db, userProfile.user, start, end)
 	if (tweets === undefined) throw new Error('tweets2 is undefined unexpectedly')
@@ -107,11 +106,7 @@ export async function getTweetsFromApi(
 	// convert to seconds
 	const startSeconds = Math.floor(start.getTime() / 1000)
 	const url = `${base}/data/users/${user}/${startSeconds}.json`
-	console.log('fetching', url)
 	const tweets = await fetch_batched(url, signal)
-	console.log('fetched', url)
-	console.log('got', tweets)
-
 	return tweets
 }
 
@@ -139,9 +134,11 @@ export async function getTweetsFromDb(
 
 export const db: Readable<IDBDatabase | undefined> = readable(undefined, (set) => {
 	if (!browser) return
-	const request = indexedDB.open('tweets', 6)
-	request.onupgradeneeded = async () => {
+	const request = indexedDB.open('tweets', 10)
+	request.onupgradeneeded = async (event: any) => {
+		console.log('HERE')
 		const db = request.result
+		const transaction = event.target.transaction
 
 		// clear the db
 		for (const name of db.objectStoreNames) {
@@ -166,30 +163,36 @@ export const db: Readable<IDBDatabase | undefined> = readable(undefined, (set) =
 		userStore.createIndex('randomPosX', 'randomPosX', { unique: false })
 		// add index for [1] of randomPos
 		userStore.createIndex('randomPosY', 'randomPosY', { unique: false })
-		// fetch activeDateRanges.json and put it in the db
-		const activeDateRanges: { [username: string]: UserProfile } = await fetch(
-			`${base}/data/activeDateRanges.json`
-		).then((res) => res.json())
-		console.log('fetched')
-		const newTransaction = db.transaction(['users'], 'readwrite')
-		const objectStore = newTransaction.objectStore('users')
-		// store the activeDateRanges in the userStore
-		for (const username of Object.keys(activeDateRanges)) {
-			activeDateRanges[username].randomPosX = activeDateRanges[username].randomPos[0]
-			activeDateRanges[username].randomPosY = activeDateRanges[username].randomPos[1]
-			activeDateRanges[username].activeDateRanges = activeDateRanges[username].activeDateRanges.map(
-				(e) => e.map((ts: number) => Number.parseInt(ts as unknown as string)) as TimestampRange
-			)
-			activeDateRanges[username].cachedDateRanges = []
-			objectStore.put(activeDateRanges[username])
+		transaction.oncomplete = async () => {
+			console.log('transaction complete')
+			await fillDB(db)
+			set(db as any)
 		}
-		set(db as any)
 	}
 	request.onsuccess = async (e: any) => {
 		const db: IDBDatabase = e.target.result
 		set(db as any)
 	}
 })
+
+async function fillDB(db: IDBDatabase) {
+	const activeDateRanges: { [username: string]: UserProfile } = await fetch(
+		`${base}/data/activeDateRanges.json`
+	).then((res) => res.json())
+	console.log('fetched')
+	const newTransaction = db.transaction(['users'], 'readwrite')
+	const objectStore = newTransaction.objectStore('users')
+	// store the activeDateRanges in the userStore
+	for (const username of Object.keys(activeDateRanges)) {
+		activeDateRanges[username].randomPosX = activeDateRanges[username].randomPos[0]
+		activeDateRanges[username].randomPosY = activeDateRanges[username].randomPos[1]
+		activeDateRanges[username].activeDateRanges = activeDateRanges[username].activeDateRanges.map(
+			(e) => e.map((ts: number) => Number.parseInt(ts as unknown as string)) as TimestampRange
+		)
+		activeDateRanges[username].cachedDateRanges = []
+		objectStore.put(activeDateRanges[username])
+	}
+}
 
 async function wrapRequest<T>(request: IDBRequest<T>) {
 	return new Promise<T>((resolve, reject) => {

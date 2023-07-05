@@ -1,6 +1,6 @@
 <script lang="ts">
 	import type { Context2D } from '$lib/Contexts/2d/Context2D'
-	import { getContext, onMount } from 'svelte'
+	import { getContext, onDestroy, onMount } from 'svelte'
 	import {
 		getTweetsInRange,
 		type TimestampRange,
@@ -20,14 +20,9 @@
 	let tweets: Tweet[] = []
 	let context: Context2D | undefined = getContext('context')
 	if (!context) throw new Error('Context is null after init')
-	const controller = new AbortController()
-	$: tweetsPromise = getTweetsInRange(
-		db,
-		user,
-		currentTimestampRange.map((date) => date.getTime() / 1000) as TimestampRange,
-		controller.signal
-	)
-	$: loadTweets(tweetsPromise)
+	let controller = new AbortController()
+	$: currentTimestampRange && loadTweets()
+	let animIntervalId = 0
 	const interp = getSlerp(0.25)
 	export let drawable = context.addChild(
 		...(user.randomPos.map((v) => v * 1000 - 500) as [number, number]),
@@ -55,12 +50,42 @@
 			interp
 		})
 	}
-	async function loadTweets(promise: Promise<Tweet[]>) {
-		tweets = await promise
-		if (tweets.length == 0) {
-			loaded.color = '#fff8'
-		}
-		drawable.ctx.setDotRadius(loaded, 1.01)
+	async function loadTweets() {
+		controller.abort()
+		clearInterval(animIntervalId)
+		animIntervalId = 0
+		controller = new AbortController()
+		drawable.ctx.setDotRadius(loaded, 0)
+		Object.values(dots).map((dot) => {
+			const scale = dot.r / 2
+			drawable.ctx.setDotRadius(dot, scale)
+			const vec = normalize(dot.pos)
+			const newVec = mulScalar(vec, Math.max(scale, 1))
+			drawable.ctx.moveDot(dot, ...vecToIter(newVec))
+		})
+		animIntervalId = setInterval(async () => {
+			loaded.color = '#fff'
+			drawable.ctx.setDotRadius(loaded, 0.5)
+			await new Promise((resolve) => setTimeout(resolve, 300))
+			if (animIntervalId == 0) return
+			drawable.ctx.setDotRadius(loaded, 0)
+		}, 600)
+		tweets = await getTweetsInRange(
+			db,
+			user,
+			currentTimestampRange.map((date) => date.getTime() / 1000) as TimestampRange,
+			controller.signal
+		)
+		clearInterval(animIntervalId)
+		animIntervalId = 0
+		window.setTimeout(() => {
+			if (tweets.length == 0) {
+				loaded.color = '#fff8'
+			} else {
+				loaded.color = '#0008'
+			}
+			drawable.ctx.setDotRadius(loaded, 1.01)
+		}, 0)
 		// sort tweets chronologically
 		tweets.sort((a, b) => a.date.getTime() - b.date.getTime())
 
@@ -103,8 +128,8 @@
 		for (const key in stats) {
 			if (Object.prototype.hasOwnProperty.call(stats, key)) {
 				let k = key as keyof typeof stats
-				const lengthLogged = Math.log(tweets.length + 1)
-				stats[k] /= lengthLogged
+				const countLogged = Math.log(stats[k] + 1)
+				stats[k] = countLogged * 5
 			}
 		}
 
@@ -117,12 +142,12 @@
 			drawable.ctx.moveDot(dot, ...vecToIter(newVec))
 		}
 	}
-	onMount(() => {
-		return () => {
-			if (!context) return
-			console.log('deleting')
-			context.removeChild(drawable)
-			controller.abort()
-		}
+	onDestroy(() => {
+		controller.abort()
+		if (!context) return
+		console.log('deleting')
+		clearInterval(animIntervalId)
+		animIntervalId = 0
+		context.removeChild(drawable)
 	})
 </script>

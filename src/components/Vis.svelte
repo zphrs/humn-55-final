@@ -59,11 +59,17 @@
 			usersOnScreen = users
 		})
 	}
+	const start = new Date('January 1 2009').getTime()
+	const range = new Date('January 1 2023').getTime() - start
+
+	$: startDate = new Date(start + range * sliderValue)
+	$: endDate = new Date(startDate.getTime() + 30 * 24 * 60 * 60 * 1000)
+	$: console.log(startDate, endDate)
 	// $: window.getUsersFromRect = getUsersFromRect.bind(null, $db, new Rect(0, 0, 0.01, 0.01))
 </script>
 
 <div class="outer">
-	<Surface width={50} height={30} {context} on:initialized={init}>
+	<Surface width={60} height={30} {context} on:initialized={init}>
 		<PannableCanvas
 			bind:getScreenSize
 			on:canvasWindowChanged={() => getDots()}
@@ -72,18 +78,17 @@
 		/>
 		{#if usersOnScreen.length > 0 && usersOnScreen.length < 20000 && $db}
 			{#each usersOnScreen as user (user.user)}
-				<DotElem
-					{user}
-					currentTimestampRange={[new Date('Oct 15 2017'), new Date('Oct 22 2017')]}
-					db={$db}
-				/>
+				<DotElem {user} currentTimestampRange={[startDate, endDate]} db={$db} />
 			{/each}
 		{/if}
 	</Surface>
 	<div class="timeline">
-		<input type="range" min="0" max="1" step="0.01" bind:value={sliderValue} />
+		<input type="range" min="0" max="1" step=".001" bind:value={sliderValue} />
 		<span class="label left">2009</span>
-		<span class="label right">Today</span>
+		<span class="label middle" style={`--progress: ${sliderValue * 100}%`}
+			>{startDate.toLocaleDateString('en-us', { year: 'numeric', month: 'short' })}</span
+		>
+		<span class="label right">2023</span>
 	</div>
 </div>
 ```
@@ -91,6 +96,8 @@
 <style>
 	div.outer {
 		border: 2px solid black;
+		max-width: 960px;
+		width: 100%;
 	}
 	.timeline {
 		margin: 1rem;
@@ -109,5 +116,13 @@
 	.label.right {
 		right: 0;
 		transform: translate(0%, 50%);
+	}
+	.label.middle {
+		width: 5rem;
+		text-align: center;
+		top: 1rem;
+		background-color: var(--gray-900);
+		left: calc(var(--progress) - 2.5rem);
+		z-index: 5;
 	}
 </style>
