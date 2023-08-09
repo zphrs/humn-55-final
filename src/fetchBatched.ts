@@ -11,7 +11,7 @@ type Tweets = Tweet[]
 let currentlyFetching = false
 
 export async function fetch_batched(url: string, signal: AbortSignal): Promise<Tweets | undefined> {
-	return await new Promise((resolve) => {
+	return  await new Promise((resolve) => {
 		queue.push({
 			url,
 			signal,
@@ -33,7 +33,7 @@ async function loop() {
 	currentlyFetching = true
 	while (true) {
 		console.log('looping')
-		await batch_requests(50)
+		await batch_requests(20)
 		if (queue.length == 0) break
 	}
 	currentlyFetching = false

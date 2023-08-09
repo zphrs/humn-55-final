@@ -8,6 +8,7 @@
 	import type { Dot } from '$lib/Contexts/2d/Dot'
 	import { getSlerp } from '$lib/Contexts/Interp'
 	import DotElem from './Dot.svelte'
+	import Key from './Key.svelte'
 	let context: ContextWrapper<Context2D> | undefined = undefined
 	let dots: Map<string, Dot> = new Map()
 	let getScreenSize: () => Rect
@@ -42,11 +43,12 @@
 	}
 	let timeout: number | undefined = undefined
 	function getDots(fromTimeout = false) {
+		loaded = false
 		if (!fromTimeout) {
 			if (timeout) clearTimeout(timeout)
 			timeout = setTimeout(() => {
 				getDots(true)
-			}, 50)
+			}, 1000)
 			return
 		}
 		if (!dotsContext) throw new Error('Context is null after init')
@@ -57,18 +59,39 @@
 		rect.y += 0.5
 		getUsersFromRect($db, rect).then((users) => {
 			usersOnScreen = users
+			resetAllSaturated()
 		})
 	}
+
+	function resetAllSaturated() {
+		allSaturated = new Set(usersOnScreen.map((u) => u.user))
+		loaded = allSaturated.size == 0
+	}
+
 	const start = new Date('January 1 2009').getTime()
 	const range = new Date('January 1 2023').getTime() - start
 
 	$: startDate = new Date(start + range * sliderValue)
 	$: endDate = new Date(startDate.getTime() + 30 * 24 * 60 * 60 * 1000)
-	$: console.log(startDate, endDate)
+	$: timestampRange = [startDate, endDate] as [Date, Date]
+	let newTimestampRange = timestampRange
+	let sliderTimeout = 0
+	function setTimestampRange(timestampRange: [Date, Date]) {
+		loaded = false
+		clearTimeout(sliderTimeout)
+		sliderTimeout = setTimeout(() => {
+			newTimestampRange = timestampRange
+		}, 1000)
+	}
+	$: setTimestampRange(timestampRange)
+	$: newTimestampRange && resetAllSaturated()
+	let allSaturated = new Set(usersOnScreen.map((u) => u.user))
+	let loaded = false
 	// $: window.getUsersFromRect = getUsersFromRect.bind(null, $db, new Rect(0, 0, 0.01, 0.01))
 </script>
 
-<div class="outer">
+<div class="outer" class:loaded>
+	<Key />
 	<Surface width={60} height={30} {context} on:initialized={init}>
 		<PannableCanvas
 			bind:getScreenSize
@@ -78,14 +101,22 @@
 		/>
 		{#if usersOnScreen.length > 0 && usersOnScreen.length < 20000 && $db}
 			{#each usersOnScreen as user (user.user)}
-				<DotElem {user} currentTimestampRange={[startDate, endDate]} db={$db} />
+				<DotElem
+					on:load={() => {
+						allSaturated.delete(user.user)
+						loaded = allSaturated.size == 0
+					}}
+					{user}
+					currentTimestampRange={newTimestampRange}
+					db={$db}
+				/>
 			{/each}
 		{/if}
 	</Surface>
 	<div class="timeline">
 		<input type="range" min="0" max="1" step=".001" bind:value={sliderValue} />
 		<span class="label left">2009</span>
-		<span class="label middle" style={`--progress: ${sliderValue * 100}%`}
+		<span class="label middle" class:loaded style={`--progress: ${sliderValue * 100}%`}
 			>{startDate.toLocaleDateString('en-us', { year: 'numeric', month: 'short' })}</span
 		>
 		<span class="label right">2023</span>
@@ -98,10 +129,14 @@
 		border: 2px solid black;
 		max-width: 960px;
 		width: 100%;
+		position: relative;
 	}
 	.timeline {
-		margin: 1rem;
-		position: relative;
+		position: absolute;
+		width: calc(100% - 2rem);
+		margin: 0 1rem;
+		left: 0;
+		bottom: 0;
 	}
 	input {
 		width: 100%;
@@ -111,18 +146,68 @@
 	}
 	.label.left {
 		left: 0;
+		top: 0;
 		transform: translate(0%, 50%);
 	}
 	.label.right {
 		right: 0;
+		top: 0;
 		transform: translate(0%, 50%);
 	}
 	.label.middle {
-		width: 5rem;
+		position: relative;
+		display: block;
+		width: fit-content;
+		padding: 0 0.25rem;
+		border-radius: 0.5rem;
 		text-align: center;
-		top: 1rem;
-		background-color: var(--gray-900);
-		left: calc(var(--progress) - 2.5rem);
+		top: -3.5rem;
+		background-color: var(--gold-700);
+		background: linear-gradient(
+			135deg,
+			var(--sea-900),
+			var(--fire-900),
+			var(--gold-900),
+			var(--violet-900),
+			var(--sea-900),
+			var(--fire-900),
+			var(--gold-900),
+			var(--violet-900)
+		);
+		left: calc(var(--progress) - 0.75rem);
+		background-size: 600% 600%;
+		background-repeat: repeat;
+		background-position: 0% 50%;
+		animation: gradient 4s infinite linear;
 		z-index: 5;
+	}
+	@keyframes gradient {
+		0% {
+			background-position: 0% 0%;
+		}
+		100% {
+			background-position: 70% 70%;
+		}
+	}
+	.label.middle.loaded {
+		background: var(--gray-900);
+	}
+
+	@keyframes pulse {
+		0% {
+			background-color: var(--sea-700);
+		}
+		25% {
+			background-color: var(--gold-700);
+		}
+		50% {
+			background-color: var(--violet-700);
+		}
+		75% {
+			background-color: var(--fire-700);
+		}
+		100% {
+			background-color: var(--sea-700);
+		}
 	}
 </style>

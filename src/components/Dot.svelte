@@ -1,18 +1,15 @@
 <script lang="ts">
 	import type { Context2D } from '$lib/Contexts/2d/Context2D'
-	import { getContext, onDestroy, onMount } from 'svelte'
-	import {
-		getTweetsInRange,
-		type TimestampRange,
-		type Tweet,
-		type UserProfile
-	} from '../TweetsStore'
+	import { getContext, onDestroy, createEventDispatcher } from 'svelte'
+	import type { SaturatedUserProfile, TimestampRange, Tweet, UserProfile } from '../TweetsStore'
 	import type { DrawableShape } from '$lib/Contexts/DrawableShape'
 	import { mulScalar, vecToIter, type Vec2, normalize } from '$lib/Utils/vec2'
 	import type { DrawableObject } from '$lib/Surface/context'
 	import type { Dot } from '$lib/Contexts/2d/Dot'
 	import { SQRT_3_OVER_2 } from '$lib/Utils/constants'
 	import { getSlerp } from '$lib/Contexts/Interp'
+	import { getTweetsStore } from '../DotsStore'
+	import type { Readable } from 'svelte/store'
 
 	export let user: UserProfile
 	export let currentTimestampRange: [Date, Date]
@@ -21,14 +18,16 @@
 	let context: Context2D | undefined = getContext('context')
 	if (!context) throw new Error('Context is null after init')
 	let controller = new AbortController()
-	$: currentTimestampRange && loadTweets()
 	let animIntervalId = 0
 	const interp = getSlerp(0.25)
+	const dispatch = createEventDispatcher<{
+		load: void
+	}>()
 	export let drawable = context.addChild(
 		...(user.randomPos.map((v) => v * 1000 - 500) as [number, number]),
 		0.001
 	)
-	const loaded = drawable.ctx.addDot(0, 0, 0, {
+	const loadingIndicator = drawable.ctx.addDot(0, 0, 0, {
 		color: '#0008',
 		interp
 	})
@@ -50,42 +49,46 @@
 			interp
 		})
 	}
-	async function loadTweets() {
+	let saturatedUser: Readable<SaturatedUserProfile | undefined> | undefined = undefined
+	$: if (saturatedUser != undefined && $saturatedUser != undefined) dispatch('load')
+	function saturateUser(user: UserProfile, range: TimestampRange) {
+		saturatedUser = getTweetsStore(user, range, controller.signal)
+	}
+	$: saturateUser(
+		user,
+		currentTimestampRange.map((date) => date.getTime() / 1000) as TimestampRange
+	)
+	$: onSaturatedUserChange($saturatedUser)
+	function onSaturatedUserChange(saturatedUser: SaturatedUserProfile | undefined) {
+		if (saturatedUser == undefined) {
+			Object.values(dots).map((dot) => {
+				const scale = dot.r / 2
+				drawable.ctx.setDotRadius(dot, scale)
+				const vec = normalize(dot.pos)
+				const newVec = mulScalar(vec, Math.max(scale, 1))
+				drawable.ctx.moveDot(dot, ...vecToIter(newVec))
+			})
+			animIntervalId = setInterval(async () => {
+				loadingIndicator.color = '#fff'
+				drawable.ctx.setDotRadius(loadingIndicator, 0.75)
+				await new Promise((resolve) => setTimeout(resolve, 300))
+				if (animIntervalId == 0) return
+				drawable.ctx.setDotRadius(loadingIndicator, 0.45)
+			}, 3000)
+			return
+		}
 		controller.abort()
-		clearInterval(animIntervalId)
+		clearTimeout(animIntervalId)
 		animIntervalId = 0
 		controller = new AbortController()
-		drawable.ctx.setDotRadius(loaded, 0)
-		Object.values(dots).map((dot) => {
-			const scale = dot.r / 2
-			drawable.ctx.setDotRadius(dot, scale)
-			const vec = normalize(dot.pos)
-			const newVec = mulScalar(vec, Math.max(scale, 1))
-			drawable.ctx.moveDot(dot, ...vecToIter(newVec))
-		})
-		animIntervalId = setInterval(async () => {
-			loaded.color = '#fff'
-			drawable.ctx.setDotRadius(loaded, 0.5)
-			await new Promise((resolve) => setTimeout(resolve, 300))
-			if (animIntervalId == 0) return
-			drawable.ctx.setDotRadius(loaded, 0)
-		}, 600)
-		tweets = await getTweetsInRange(
-			db,
-			user,
-			currentTimestampRange.map((date) => date.getTime() / 1000) as TimestampRange,
-			controller.signal
-		)
-		clearInterval(animIntervalId)
-		animIntervalId = 0
-		window.setTimeout(() => {
-			if (tweets.length == 0) {
-				loaded.color = '#fff8'
-			} else {
-				loaded.color = '#0008'
-			}
-			drawable.ctx.setDotRadius(loaded, 1.01)
-		}, 0)
+		tweets = saturatedUser.tweets
+
+		if (tweets.length == 0) {
+			loadingIndicator.color = '#fff8'
+		} else {
+			loadingIndicator.color = '#0008'
+		}
+		drawable.ctx.setDotRadius(loadingIndicator, 1.01)
 		// sort tweets chronologically
 		tweets.sort((a, b) => a.date.getTime() - b.date.getTime())
 
