@@ -93,7 +93,10 @@
 		if (!context || !ctx) return newVec2(0, 0)
 		return subVec(
 			divScalar(
-				subVec(vec, newVec2(ctx.canvas.width / 2, ctx.canvas.height / 2)),
+				subVec(
+					vec,
+					newVec2(ctx.canvas.width / devicePixelRatio / 2, ctx.canvas.height / devicePixelRatio / 2)
+				),
 				context.ctx.getScale()
 			),
 			context.ctx.getPos()
@@ -134,7 +137,7 @@
 		const zoomAmount = context.ctx.getScale()
 		const width = ctx.canvas.width / zoomAmount / devicePixelRatio
 		const height = ctx.canvas.height / zoomAmount / devicePixelRatio
-		return new Rect(xy.x + width / 2, xy.y + height / 2, width, height)
+		return new Rect(xy.x, xy.y, width, height)
 	}
 
 	let zoomTranslateOnDown: Vec2 | null = null
