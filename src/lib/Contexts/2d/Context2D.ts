@@ -4,7 +4,7 @@ import {
 	type DrawableObject,
 	type UpdatableAndDrawable
 } from '$lib/Surface/context'
-import { newVec2, vecToIter, type Vec2 } from '$lib/Utils/vec2'
+import { newVec2, vecToIter, type Vec2, clamp } from '$lib/Utils/vec2'
 import {
 	createAnimationInfo,
 	type AnimationInfo,
@@ -15,7 +15,7 @@ import {
 	newTo
 } from '../Animate'
 import type { DrawableShape } from '../DrawableShape'
-import { getSlerp, NO_INTERP, type Interp } from '../Interp'
+import { getSlerp, NO_INTERP, type Interp, getLinearInterp } from '../Interp'
 import { createDot, type Dot } from './Dot'
 import { createLine, type Line } from './Line'
 import { createRect, type Rect } from './Rect'
@@ -39,7 +39,7 @@ export type CompleteShapeConfig = {
 }
 
 const DEFAULT_SHAPE_CONFIG: CompleteShapeConfig = {
-	interp: NO_INTERP,
+	interp: getLinearInterp(1),
 	color: 'black',
 	zIndex: 0
 }
@@ -86,6 +86,7 @@ export type Context2D = Readonly<{
 		y: number
 	) => void
 	removeChild: (child: Deletable) => void
+	setInterp: (interp: Interp) => void
 }> & { pos: Vec2; scale: number }
 
 export type ScalePos = { scale: number; pos: Vec2 }
@@ -265,6 +266,10 @@ export function createContext2D(
 			},
 			removeChild: function (child: Deletable) {
 				child.delete()
+				restartListener()
+			},
+			setInterp(interp: Interp): void {
+				animationInfo.timingFunction = interp
 				restartListener()
 			}
 		},

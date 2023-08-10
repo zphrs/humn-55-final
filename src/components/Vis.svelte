@@ -9,8 +9,8 @@
 	import { getSlerp } from '$lib/Contexts/Interp'
 	import DotElem from './Dot.svelte'
 	import Key from './Key.svelte'
+	import { clamp } from '$lib/Utils/vec2'
 	let context: ContextWrapper<Context2D> | undefined = undefined
-	let dots: Map<string, Dot> = new Map()
 	let getScreenSize: () => Rect
 	let sliderValue = 0
 	let dotsContext: ContextWrapper<Context2D> | undefined = undefined
@@ -18,7 +18,11 @@
 	const init = () => {
 		if (!context) throw new Error('Context is null after init')
 		context.ctx.setScale(
-			Math.max(context.ctx.canvasCtx.canvas.width, context.ctx.canvasCtx.canvas.height)
+			clamp(
+				2000,
+				Math.max(context.ctx.canvasCtx.canvas.width, context.ctx.canvasCtx.canvas.height),
+				100000
+			)
 		)
 		dotsContext = context.ctx.addChild(-0.5, -0.5, 1, { color: '#000', interp: getSlerp(0.5) })
 		// let dot = context.ctx.addDot(0, 0, 10)
@@ -55,6 +59,7 @@
 		const { ctx } = dotsContext
 		if (!$db) return
 		const rect = getScreenSize()
+		console.log(rect)
 		rect.x += 0.5
 		rect.y += 0.5
 		getUsersFromRect($db, rect).then((users) => {
@@ -116,7 +121,10 @@
 	<div class="timeline">
 		<input type="range" min="0" max="1" step=".001" bind:value={sliderValue} />
 		<span class="label left">2009</span>
-		<span class="label middle" class:loaded style={`--progress: ${sliderValue * 100}%`}
+		<span
+			class="label middle"
+			class:loaded
+			style={`--progress: ${sliderValue * 100}%; --progress-decimal: ${sliderValue};`}
 			>{startDate.toLocaleDateString('en-us', { year: 'numeric', month: 'short' })}</span
 		>
 		<span class="label right">2023</span>
@@ -157,7 +165,7 @@
 	.label.middle {
 		position: relative;
 		display: block;
-		width: fit-content;
+		width: 5.5rem;
 		padding: 0 0.25rem;
 		border-radius: 0.5rem;
 		text-align: center;
@@ -174,7 +182,7 @@
 			var(--gold-900),
 			var(--violet-900)
 		);
-		left: calc(var(--progress) - 0.75rem);
+		left: calc(var(--progress) - var(--progress-decimal) * 5.5rem);
 		background-size: 600% 600%;
 		background-repeat: repeat;
 		background-position: 0% 50%;

@@ -18,7 +18,8 @@
 		newVec2,
 		subVec,
 		vecToIter,
-		type Vec2
+		type Vec2,
+		clamp
 	} from '$lib/Utils/vec2'
 	import {
 		type ShapeConfig,
@@ -43,6 +44,8 @@
 	export let pointersWritableProxy: Writable<PointersDict> = writable({})
 	export let pPan: (e: CustomEvent<PanEvent>, ctx: CanvasRenderingContext2D) => boolean = () => true
 	export let context: ContextWrapper<Context2D> | undefined = undefined
+	export let minZoom = 2000
+	export let maxZoom = 100000
 
 	const dispatch = createEventDispatcher<{
 		ppanstart: PEvent
@@ -129,7 +132,9 @@
 		if (!ctx || !context) return new Rect(0, 0, 0, 0)
 		const xy = screenSpaceToCanvasSpace(0, 0)
 		const zoomAmount = context.ctx.getScale()
-		return new Rect(xy.x, xy.y, ctx.canvas.width / zoomAmount, ctx.canvas.height / zoomAmount)
+		const width = ctx.canvas.width / zoomAmount / devicePixelRatio
+		const height = ctx.canvas.height / zoomAmount / devicePixelRatio
+		return new Rect(xy.x + width / 2, xy.y + height / 2, width, height)
 	}
 
 	let zoomTranslateOnDown: Vec2 | null = null
@@ -138,12 +143,46 @@
 		zoomTranslateOnDown = context?.ctx.getPos()
 	}
 
+	let setScaleTimeout = 0
+
 	function onZoom(e: CustomEvent<ZoomEvent>) {
 		if (!ctx || !canvas || !context) return
+		console.log('HERE')
 		let { scaleAmount, relativeX, relativeY } = e.detail
 		scaleAmount = Math.abs(scaleAmount)
 		const oldZoom = context.ctx.getScale()
+		console.log(oldZoom, scaleAmount)
 		const newZoom = oldZoom * scaleAmount
+		clearTimeout(setScaleTimeout)
+		setScaleTimeout = setTimeout(() => {
+			if (!ctx || !canvas || !context) return
+			// get scale
+			const oz = context.ctx.getScale()
+			const nz = clamp(minZoom, oldZoom * scaleAmount, maxZoom)
+			if (oz === nz) return
+			// get diff between old and new zoom
+			const diff = Math.log10(Math.abs(oz - nz)) * 0.1
+			console.log(diff)
+			// set interp of context
+			const time = diff
+			context.ctx.setInterp(getLinearInterp(time))
+			window.setTimeout(() => {
+				if (!ctx || !canvas || !context) return
+				context.ctx.setInterp(getLinearInterp(0.05))
+			}, time * 1000)
+			dispatch('canvasWindowChanged')
+			context.ctx.setScale(nz)
+			const xOffset = relativeX - ctx.canvas.width / 2 / devicePixelRatio
+			const yOffset = relativeY - ctx.canvas.height / 2 / devicePixelRatio
+			context.ctx.setPosToVec(
+				addVec(
+					context.ctx.getPos(),
+					newVec2(xOffset / nz - xOffset / oz, yOffset / nz - yOffset / oz)
+				)
+			)
+			dispatch('zoom', e.detail)
+			dispatch('canvasWindowChanged')
+		}, 20)
 		context.ctx.setScale(newZoom)
 		const xOffset = relativeX - ctx.canvas.width / 2 / devicePixelRatio
 		const yOffset = relativeY - ctx.canvas.height / 2 / devicePixelRatio
