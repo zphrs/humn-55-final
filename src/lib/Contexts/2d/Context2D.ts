@@ -55,8 +55,6 @@ export type Context2D = Readonly<{
 	canvasCtx: CanvasRenderingContext2D
 	setScale: (scale: number) => void
 	setPos: (x: number, y: number) => void
-	setPosBounds: (rect: Rect) => void
-	setScaleBounds: (min: number, max: number) => void
 	setPosToVec: (pos: Vec2) => void
 	getScale: () => number
 	getPos: () => Vec2
@@ -145,7 +143,6 @@ export function createContext2D(
 				restartListener()
 				return dot
 			},
-			setScaleBounds(min: number, max: number) {},
 			removeDot(dot: Dot) {
 				dot.delete()
 				restartListener()

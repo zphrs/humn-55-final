@@ -18,10 +18,26 @@
 	let loadingTimeout = setTimeout(() => {
 		showLoading = true
 	}, 500)
-	let updatingTimeout: number | undefined = setTimeout(() => {
-		showUpdating = true
-	}, 100)
-	$: latestTimestamp && (showUpdating = true)
+	let updatingTimeout: number | undefined = undefined
+	function onRangeChange(_range: any) {
+		if (updatingTimeout === undefined) {
+			updatingTimeout = setTimeout(() => {
+				showUpdating = true
+			}, 50)
+		}
+	}
+	$: onRangeChange(range)
+	function onUserChange(_user: any) {
+		showUpdating = false
+		clearTimeout(updatingTimeout)
+		updatingTimeout = undefined
+		clearTimeout(loadingTimeout)
+		loadingTimeout = setTimeout(() => {
+			newSaturatedUser = undefined
+			showLoading = true
+		}, 500)
+	}
+	$: onUserChange(user)
 	$: {
 		if ($saturatedUserStore) {
 			newSaturatedUser = $saturatedUserStore
@@ -31,19 +47,6 @@
 			clearTimeout(updatingTimeout)
 			updatingTimeout = undefined
 			tweets = newSaturatedUser.tweets
-		} else {
-			clearTimeout(loadingTimeout)
-			if (updatingTimeout === undefined) {
-				updatingTimeout = setTimeout(() => {
-					showUpdating = true
-				}, 100)
-			}
-			loadingTimeout = setTimeout(() => {
-				newSaturatedUser = undefined
-				showLoading = true
-				showUpdating = false
-				tweets = []
-			}, 500)
 		}
 	}
 	$: console.log($saturatedUserStore)
@@ -54,14 +57,14 @@
 </script>
 
 <div class="main">
+	{#if showUpdating}
+		<div
+			style="position: absolute; top: 0; left: 0; width: 100%; height: 0.25rem"
+			class="loading"
+		/>
+	{/if}
 	<button class="x" on:click={() => dispatch('close')}>Close</button>
 	{#if newSaturatedUser}
-		{#if showUpdating}
-			<div
-				style="position: absolute; top: 0; left: 0; width: 100%; height: 0.25rem"
-				class="loading"
-			/>
-		{/if}
 		<h1 class:updating={showUpdating}>
 			<a href={'https://twitter.com/' + newSaturatedUser.user}>@{newSaturatedUser.user}</a>
 		</h1>
@@ -84,14 +87,14 @@
 			<TweetsList updating={showUpdating} {tweets} />
 		{/if}
 	{:else}
-		<h1>
+		<h1 class:updating={showUpdating}>
 			<a href={'https://twitter.com/' + user.user} target="_blank" rel="noopener noreferrer"
 				>@{user.user}</a
 			>
 		</h1>
 		{#if showLoading}
 			{#each Array(2) as _, i}
-				<div class="tweet loading mh-100" />
+				<div class="tweet loading mh-100" class:updating={showUpdating} />
 			{/each}
 		{/if}
 	{/if}
