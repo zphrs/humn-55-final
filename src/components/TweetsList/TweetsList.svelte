@@ -12,3 +12,9 @@
 		<TweetBox {tweet} />
 	{/each}
 </div>
+
+<style>
+	.tweets {
+		overflow: auto;
+	}
+</style>

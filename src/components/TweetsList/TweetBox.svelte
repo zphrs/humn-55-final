@@ -14,18 +14,35 @@
 	<p class="date">
 		{tweet.date.toLocaleDateString('default', {
 			year: 'numeric',
-			month: 'short',
+			month: 'numeric',
 			day: 'numeric'
 		})}
 	</p>
 	<p class="text">{tweet.rawContent}</p>
+	{#if tweet.media}
+		{#each tweet.media as media}
+			{#if typeof media == 'string'}
+				<img src={media} />
+			{:else}
+				<img src={media.thumbnailUrl} />
+				<a href={media.variants[0]} target="_blank" rel="noopener noreferrer">
+					{media.variants[0]}
+				</a>
+			{/if}
+		{/each}
+	{/if}
 </div>
 
 <style>
 	.tweet {
-		margin: 0.5rem;
+		margin-bottom: 0.5rem;
 		padding: 0.5rem;
 		border-radius: 0.5rem;
+	}
+	img {
+		max-height: 40vh;
+		width: auto;
+		margin: auto;
 	}
 	.date {
 		text-align: right;

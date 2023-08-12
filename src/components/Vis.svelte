@@ -108,7 +108,7 @@
 		const users = usersOnScreen.filter((u) => {
 			const posVec = subVec(newVec2(...u.randomPos), newVec2(0.5, 0.5))
 			const dist = distanceTo(posVec, pos)
-			return dist < 0.001
+			return dist < 0.002
 		})
 		// sort users by distance
 		users.sort((a, b) => {
@@ -127,8 +127,6 @@
 
 	function broadcastIfUserTapped(e: CustomEvent<PEvent>) {
 		const user = getTappedUser(e.detail)
-		if (!user) return
-		dispatch('userTapped', user)
 		userSelected = user
 	}
 	let userSelected: UserProfile | undefined = undefined
@@ -174,12 +172,11 @@
 			class="label middle"
 			class:loaded
 			style={`--progress: ${sliderValue * 100}%; --progress-decimal: ${sliderValue};`}
-			>{startDate.toLocaleDateString('en-us', { year: 'numeric', month: 'short' })}</span
+			>{endDate.toLocaleDateString('en-us', { year: 'numeric', month: 'short' })}</span
 		>
 		<span class="label right">2023</span>
 	</div>
 </div>
-```
 
 <style>
 	div.outer {
@@ -219,6 +216,7 @@
 		border-radius: 0.5rem;
 		text-align: center;
 		top: -3.5rem;
+		left: calc(var(--progress) - var(--progress-decimal) * 5.5rem);
 		background-color: var(--gold-700);
 		background: linear-gradient(
 			135deg,
@@ -231,7 +229,6 @@
 			var(--gold-900),
 			var(--violet-900)
 		);
-		left: calc(var(--progress) - var(--progress-decimal) * 5.5rem);
 		background-size: 600% 600%;
 		background-repeat: repeat;
 		background-position: 0% 50%;
