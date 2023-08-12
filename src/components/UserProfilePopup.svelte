@@ -112,6 +112,8 @@
 		border: 1px solid var(--gray-100);
 		border-radius: 1rem;
 		cursor: pointer;
+		color: inherit;
+		font: inherit;
 	}
 	.updating {
 		filter: grayscale(1);
