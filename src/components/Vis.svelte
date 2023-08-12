@@ -79,7 +79,7 @@
 		loaded = allSaturated.size == 0
 	}
 
-	const start = new Date('January 1 2009').getTime()
+	const start = new Date('April 1 2009').getTime()
 	const range = new Date('January 1 2023').getTime() - start
 
 	$: startDate = new Date(start + range * sliderValue)
@@ -135,9 +135,12 @@
 <div class="outer" class:loaded>
 	{#if userSelected && $db}
 		<UserProfilePopup
-			bind:user={userSelected}
+			on:close={() => {
+				userSelected = undefined
+			}}
+			user={userSelected}
 			beginningDate={new Date('January 1 2009')}
-			latestTimestamp={newTimestampRange[1]}
+			latestTimestamp={timestampRange[1]}
 			db={$db}
 		/>
 	{/if}

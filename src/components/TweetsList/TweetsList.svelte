@@ -3,12 +3,13 @@
 	import TweetBox from './TweetBox.svelte'
 
 	export let tweets: Tweet[]
+	export let updating = false
 	console.log(tweets)
-	const tweetsReversed = tweets.slice().reverse()
+	$: tweetsReversed = tweets.slice().reverse()
 </script>
 
-<div class="tweets">
-	{#each tweetsReversed as tweet}
+<div class="tweets" class:updating>
+	{#each tweetsReversed as tweet (tweet.id)}
 		<TweetBox {tweet} />
 	{/each}
 </div>
@@ -16,5 +17,8 @@
 <style>
 	.tweets {
 		overflow: auto;
+	}
+	.updating {
+		filter: grayscale(1);
 	}
 </style>

@@ -8,6 +8,7 @@ export type AnimationInfo<Animating extends KeyToKeyOrNumber> = {
 	timingFunction: Interp
 	from: Animating
 	to: Animating | null
+	bounds?: { lower: Animating; upper: Animating }
 }
 
 function recursiveCopy<Animating extends KeyToKeyOrNumber>(obj: Animating) {
@@ -77,7 +78,8 @@ function lerpKeyToKeyOrNumber(from: KeyToKeyOrNumber, to: KeyToKeyOrNumber, prog
 
 export function createAnimationInfo<Animating extends KeyToKeyOrNumber>(
 	init: Animating,
-	timing: Interp
+	timing: Interp,
+	bounds?: { lower: Animating; upper: Animating }
 ): AnimationInfo<Animating> {
 	// create a shallow copy of init
 	let cpy = recursiveCopy(init)
