@@ -9,7 +9,10 @@
 	import { getSlerp } from '$lib/Contexts/Interp'
 	import DotElem from './Dot.svelte'
 	import Key from './Key.svelte'
-	import { clamp } from '$lib/Utils/vec2'
+	import { addVec, clamp, distanceTo, newVec2, subVec, type Vec2 } from '$lib/Utils/vec2'
+	import type { PEvent } from '$lib/Gestures/addMoreEvents'
+	import { createEventDispatcher } from 'svelte'
+	import UserProfilePopup from './UserProfilePopup.svelte'
 	let context: ContextWrapper<Context2D> | undefined = undefined
 	let getScreenSize: () => Rect
 	let sliderValue = 0
@@ -31,6 +34,10 @@
 
 	$: if (context && $db) getDots()
 	$: if (context && $db) addBlankDots()
+
+	const dispatch = createEventDispatcher<{
+		userTapped: UserProfile
+	}>()
 
 	function addBlankDots() {
 		if (!dotsContext) throw new Error('Context is null after init')
@@ -59,7 +66,6 @@
 		const { ctx } = dotsContext
 		if (!$db) return
 		const rect = getScreenSize()
-		console.log(rect)
 		rect.x += 0.5
 		rect.y += 0.5
 		getUsersFromRect($db, rect).then((users) => {
@@ -93,16 +99,59 @@
 	let allSaturated = new Set(usersOnScreen.map((u) => u.user))
 	let loaded = false
 	// $: window.getUsersFromRect = getUsersFromRect.bind(null, $db, new Rect(0, 0, 0.01, 0.01))
+	let screenSpaceToCanvasSpace: (x: number, y: number) => Vec2
+	function getTappedUser(e: PEvent) {
+		e.relativeX
+		const pos = screenSpaceToCanvasSpace(e.relativeX, e.relativeY)
+		console.log('HERE', pos)
+		// find all users on screen
+		const users = usersOnScreen.filter((u) => {
+			const posVec = subVec(newVec2(...u.randomPos), newVec2(0.5, 0.5))
+			const dist = distanceTo(posVec, pos)
+			return dist < 0.001
+		})
+		// sort users by distance
+		users.sort((a, b) => {
+			const posVecA = subVec(newVec2(...a.randomPos), newVec2(0.5, 0.5))
+			const posVecB = subVec(newVec2(...b.randomPos), newVec2(0.5, 0.5))
+			const distA = distanceTo(posVecA, pos)
+			const distB = distanceTo(posVecB, pos)
+			return distA - distB
+		})
+		// get closest user
+		const user = users[0]
+		if (!user) return
+		console.log(user)
+		return user
+	}
+
+	function broadcastIfUserTapped(e: CustomEvent<PEvent>) {
+		const user = getTappedUser(e.detail)
+		if (!user) return
+		dispatch('userTapped', user)
+		userSelected = user
+	}
+	let userSelected: UserProfile | undefined = undefined
 </script>
 
 <div class="outer" class:loaded>
+	{#if userSelected && $db}
+		<UserProfilePopup
+			bind:user={userSelected}
+			beginningDate={new Date('January 1 2009')}
+			latestTimestamp={newTimestampRange[1]}
+			db={$db}
+		/>
+	{/if}
 	<Key />
 	<Surface width={60} height={30} {context} on:initialized={init}>
 		<PannableCanvas
 			bind:getScreenSize
+			bind:screenSpaceToCanvasSpace
 			on:canvasWindowChanged={() => getDots()}
 			bind:context
 			on:initialized={init}
+			on:ptap={broadcastIfUserTapped}
 		/>
 		{#if usersOnScreen.length > 0 && usersOnScreen.length < 20000 && $db}
 			{#each usersOnScreen as user (user.user)}

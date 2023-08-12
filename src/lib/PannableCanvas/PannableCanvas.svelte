@@ -150,11 +150,9 @@
 
 	function onZoom(e: CustomEvent<ZoomEvent>) {
 		if (!ctx || !canvas || !context) return
-		console.log('HERE')
 		let { scaleAmount, relativeX, relativeY } = e.detail
 		scaleAmount = Math.abs(scaleAmount)
 		const oldZoom = context.ctx.getScale()
-		console.log(oldZoom, scaleAmount)
 		const newZoom = oldZoom * scaleAmount
 		clearTimeout(setScaleTimeout)
 		setScaleTimeout = setTimeout(() => {
@@ -165,7 +163,6 @@
 			if (oz === nz) return
 			// get diff between old and new zoom
 			const diff = Math.log10(Math.abs(oz - nz)) * 0.1
-			console.log(diff)
 			// set interp of context
 			const time = diff
 			context.ctx.setInterp(getLinearInterp(time))

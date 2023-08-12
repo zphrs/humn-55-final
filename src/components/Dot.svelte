@@ -27,10 +27,6 @@
 		...(user.randomPos.map((v) => v * 1000 - 500) as [number, number]),
 		0.001
 	)
-	const loadingIndicator = drawable.ctx.addDot(0, 0, 0, {
-		color: '#0008',
-		interp
-	})
 	const dots = {
 		metoo: drawable.ctx.addDot(0, 1, 0, {
 			color: '#ffd14080',
@@ -49,10 +45,15 @@
 			interp
 		})
 	}
+	const loadingIndicator = drawable.ctx.addDot(0, 0, 0, {
+		color: '#000',
+		interp,
+		zIndex: 10
+	})
 	let saturatedUser: Readable<SaturatedUserProfile | undefined> | undefined = undefined
 	$: if (saturatedUser != undefined && $saturatedUser != undefined) dispatch('load')
 	function saturateUser(user: UserProfile, range: TimestampRange) {
-		saturatedUser = getTweetsStore(user, range, controller.signal)
+		saturatedUser = getTweetsStore(db, user, range, controller.signal)
 	}
 	$: saturateUser(
 		user,
@@ -86,7 +87,7 @@
 		if (tweets.length == 0) {
 			loadingIndicator.color = '#fff8'
 		} else {
-			loadingIndicator.color = '#0008'
+			loadingIndicator.color = '#000'
 		}
 		drawable.ctx.setDotRadius(loadingIndicator, 1.01)
 		// sort tweets chronologically

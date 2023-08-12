@@ -58,12 +58,12 @@ export function addObjectWithZIndex<
 	zIndex: number,
 	obj: DrawableObject<Context>
 ): boolean {
-	if (!(zIndex in objects)) {
+	if (keysInObjects.includes(zIndex)) {
+		objects[zIndex].add(obj)
+	} else {
 		objects[zIndex] = new Set([obj])
 		keysInObjects.push(zIndex)
 		keysInObjects.sort() // might be better to do insertion sort?
-	} else {
-		objects[zIndex].add(obj)
 	}
 	return obj.needsUpdate
 }

@@ -8,7 +8,7 @@
 		type ZoomEvent,
 		type Events
 	} from './Gestures/addMoreEvents'
-	import { createEventDispatcher } from 'svelte'
+	import { createEventDispatcher, onDestroy } from 'svelte'
 
 	const dispatch = createEventDispatcher<{
 		ppanstart: PEvent
@@ -24,7 +24,12 @@
 	}>()
 
 	export let canvas: HTMLCanvasElement | undefined = undefined
+	let destroy: (() => void) | undefined = undefined
 	$: if (canvas) {
-		addMoreEvents(canvas, dispatch)
+		;({ destroy } = addMoreEvents(canvas, dispatch))
+	}
+	// on unmount, destroy
+	$: if (destroy) {
+		onDestroy(destroy)
 	}
 </script>

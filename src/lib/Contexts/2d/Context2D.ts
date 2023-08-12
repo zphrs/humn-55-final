@@ -116,7 +116,7 @@ export function createContext2D(
 		canvas.style.top = '0'
 		canvas.style.left = '0'
 	}
-	let keysInObjects = [0]
+	let keysInObjects: number[] = []
 	type extendableKeyToKeyOrNumber = unknown extends KeyToKeyOrNumber ? KeyToKeyOrNumber : never
 	const restartListeners = new Set<() => void>()
 
@@ -235,8 +235,8 @@ export function createContext2D(
 				return out.ctx.pos
 			},
 			delete: function () {
-				// delete all objects
 				for (const zIndex in keysInObjects) {
+					if (!out.objects[zIndex]) continue
 					for (const obj of out.objects[zIndex]) {
 						obj.delete()
 					}
@@ -324,7 +324,8 @@ export function createContext2D(
 						this.objects[key].delete(object)
 						if (this.objects[key].size === 0) {
 							delete this.objects[key]
-							keysInObjects = keysInObjects.filter((k) => k !== key)
+							const keyIndex = keysInObjects.indexOf(key)
+							keysInObjects.splice(keyIndex, 1)
 						}
 					}
 				}

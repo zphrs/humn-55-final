@@ -16,9 +16,13 @@ dbStore.subscribe((dbValue) => {
 	db = dbValue
 })
 
-export function getTweetsStore(user: UserProfile, range: TimestampRange, signal: AbortSignal) {
+export function getTweetsStore(
+	db: IDBDatabase,
+	user: UserProfile,
+	range: TimestampRange,
+	signal: AbortSignal
+) {
 	return readable<SaturatedUserProfile | undefined>(undefined, (set) => {
-		if (!db) return
 		saturateUserProfile(db, user, range, signal).then((res) => {
 			set(res)
 		})
