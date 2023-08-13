@@ -44,7 +44,7 @@
 	export let pointersWritableProxy: Writable<PointersDict> = writable({})
 	export let pPan: (e: CustomEvent<PanEvent>, ctx: CanvasRenderingContext2D) => boolean = () => true
 	export let context: ContextWrapper<Context2D> | undefined = undefined
-	export let minZoom = 1000
+	export let minZoom = 2000
 	export let maxZoom = 100000
 
 	export let cameraRect: Rect = new Rect(-0.5, -0.5, 0.5, 0.5)
