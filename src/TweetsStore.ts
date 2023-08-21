@@ -77,7 +77,7 @@ export async function getTweetsInRange(
 		if (tsStart > end.getTime() / 1000) continue
 		if (tsEnd < start.getTime() / 1000) continue
 		if (userProfile.cachedDateRanges.includes(tsStart)) {
-			console.log('already loaded in')
+			// necessary date range is already loaded into db
 			continue
 		}
 		const tweets = await getTweetsFromApi(userProfile.user, new Date(tsStart * 1000), signal)
@@ -88,9 +88,6 @@ export async function getTweetsInRange(
 		dbUpToDatePromises.push(Promise.all(tweets.map((tweet) => wrapRequest(tweetStore.put(tweet)))))
 	}
 	await Promise.all(dbUpToDatePromises)
-	// await new Promise((resolve) => {
-	// 	setTimeout(resolve, 1000)
-	// })
 
 	const tweets = await getTweetsFromDb(db, userProfile.user, start, end)
 	if (tweets === undefined) throw new Error('tweets2 is undefined unexpectedly')
@@ -102,7 +99,7 @@ export async function getTweetsFromApi(
 	start: Date,
 	signal: AbortSignal
 ): Promise<Tweet[] | undefined> {
-	// ex: /data/users/000e151_/1616466969.json
+	// ex api call: /data/users/000e151_/1616466969.json
 	// convert to seconds
 	const startSeconds = Math.floor(start.getTime() / 1000)
 	const url = `${base}/data/users/${user}/${startSeconds}.json`

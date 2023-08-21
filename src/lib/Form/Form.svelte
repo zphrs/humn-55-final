@@ -1,10 +1,9 @@
 <script>
-  import Surface from '$lib/Surface/Surface.svelte'
-  const context = 
+	import Surface from '$lib/Surface/Surface.svelte'
 </script>
 
 <Surface>
-  <div class="form">
-    <slot />
-  </div>
+	<div class="form">
+		<slot />
+	</div>
 </Surface>

@@ -7,13 +7,14 @@
 	import type { DrawableObject } from '$lib/Surface/context'
 	import type { Dot } from '$lib/Contexts/2d/Dot'
 	import { SQRT_3_OVER_2 } from '$lib/Utils/constants'
-	import { getSlerp } from '$lib/Contexts/Interp'
+	import { getSlerp } from '$lib/Contexts/Animate/Interp'
 	import { getTweetsStore } from '../DotsStore'
 	import type { Readable } from 'svelte/store'
 
 	export let user: UserProfile
 	export let currentTimestampRange: [Date, Date]
 	export let db: IDBDatabase
+	export let selected: boolean = false
 	let tweets: Tweet[] = []
 	let context: Context2D | undefined = getContext('context')
 	if (!context) throw new Error('Context is null after init')
@@ -50,15 +51,18 @@
 		interp,
 		zIndex: 10
 	})
+	const selectedIndicator = drawable.ctx.addDot(0, 0, 0, {
+		color: '#b0b3b0',
+		interp,
+		zIndex: 0
+	})
+	$: drawable.ctx.setDotRadius(selectedIndicator, selected ? 3 : 0)
 	let saturatedUser: Readable<SaturatedUserProfile | undefined> | undefined = undefined
-	$: if (saturatedUser != undefined && $saturatedUser != undefined) dispatch('load')
-	function saturateUser(user: UserProfile, range: TimestampRange) {
+	$: if (saturatedUser != undefined && $saturatedUser != undefined && user) dispatch('load')
+	function saturateUser(range: TimestampRange) {
 		saturatedUser = getTweetsStore(db, user, range, controller.signal)
 	}
-	$: saturateUser(
-		user,
-		currentTimestampRange.map((date) => date.getTime() / 1000) as TimestampRange
-	)
+	$: saturateUser(currentTimestampRange.map((date) => date.getTime() / 1000) as TimestampRange)
 	$: onSaturatedUserChange($saturatedUser)
 	function onSaturatedUserChange(saturatedUser: SaturatedUserProfile | undefined) {
 		if (saturatedUser == undefined) {
@@ -149,7 +153,6 @@
 	onDestroy(() => {
 		controller.abort()
 		if (!context) return
-		console.log('deleting')
 		clearInterval(animIntervalId)
 		animIntervalId = 0
 		context.removeChild(drawable)

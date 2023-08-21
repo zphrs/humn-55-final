@@ -64,7 +64,7 @@
 		color: white;
 	}
 	img {
-		max-height: 40vh;
+		max-height: 250px;
 		width: auto;
 		margin: auto;
 	}

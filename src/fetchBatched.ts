@@ -1,3 +1,4 @@
+import { sleep } from '$lib/Utils/sleep'
 import { parseTweet, type Tweet } from './TweetsStore'
 type QueueItem = {
 	url: string
@@ -11,7 +12,7 @@ type Tweets = Tweet[]
 let currentlyFetching = false
 
 export async function fetch_batched(url: string, signal: AbortSignal): Promise<Tweets | undefined> {
-	return  await new Promise((resolve) => {
+	return await new Promise((resolve) => {
 		queue.push({
 			url,
 			signal,
@@ -34,6 +35,7 @@ async function loop() {
 	while (true) {
 		console.log('looping')
 		await batch_requests(20)
+		await sleep(1) // wait a second to let other async things get processed
 		if (queue.length == 0) break
 	}
 	currentlyFetching = false

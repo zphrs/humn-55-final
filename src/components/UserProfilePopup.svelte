@@ -10,7 +10,17 @@
 	$: range = [beginningDate, latestTimestamp].map((date) => date.getTime() / 1000) as TimestampRange
 	export let db: IDBDatabase
 	let controller = new AbortController()
-	$: saturatedUserStore = getTweetsStore(db, user, range, controller.signal)
+	let saturatedUserStore = getTweetsStore(
+		db,
+		user,
+		[beginningDate, latestTimestamp].map((date) => date.getTime() / 1000) as TimestampRange,
+		controller.signal
+	)
+	$: {
+		controller.abort()
+		controller = new AbortController()
+		saturatedUserStore = getTweetsStore(db, user, range, controller.signal)
+	}
 	onDestroy(() => controller.abort())
 	let newSaturatedUser: SaturatedUserProfile | undefined = $saturatedUserStore
 	let showLoading = false
@@ -55,6 +65,15 @@
 		close: void
 	}>()
 </script>
+
+<svelte:document
+	on:keydown={(e) => {
+		console.log(e)
+		if (e.key === 'Escape') {
+			dispatch('close')
+		}
+	}}
+/>
 
 <div class="main">
 	{#if showUpdating}
@@ -106,12 +125,13 @@
 	}
 	.x {
 		position: absolute;
-		top: 0.5rem;
+		top: 0.75rem;
 		right: 0.5rem;
 		background-color: var(--gray-950);
 		border: 1px solid var(--gray-100);
 		border-radius: 1rem;
 		cursor: pointer;
+		padding: 0.125rem 0.5rem;
 		color: inherit;
 		font: inherit;
 	}

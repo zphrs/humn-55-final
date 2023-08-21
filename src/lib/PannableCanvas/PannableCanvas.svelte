@@ -21,33 +21,27 @@
 		type Vec2,
 		clamp
 	} from '$lib/Utils/vec2'
-	import {
-		type ShapeConfig,
-		type ScalePos,
-		type Context2D,
-		createContext2D,
-		completeShapeConfig
-	} from '$lib/Contexts/2d/Context2D'
+	import { type Context2D, createContext2D } from '$lib/Contexts/2d/Context2D'
 	import type { ContextWrapper } from '$lib/Surface/context'
-	import type { DrawableShape } from '$lib/Contexts/DrawableShape'
-	import { getCubicBezier, getLinearInterp, getSlerp } from '$lib/Contexts/Interp'
+	import { getLinearInterp, getSlerp } from '$lib/Contexts/Animate/Interp'
 	import {
 		createAnimationInfo,
 		type AnimationInfo,
 		modifyTo,
-		updateAnimationInfo
-	} from '$lib/Contexts/Animate'
+		updateAnimationInfo,
+		waitForFinal,
+		addFinalListener
+	} from '$lib/Contexts/Animate/Animate'
 	import { browser } from '$app/environment'
+	import { changeInterpFunction } from '$lib/Contexts/Animate/Animatable'
 
 	let canvas: HTMLCanvasElement | undefined = undefined
 	export let pointersWritable: Writable<PointersDict> = writable({})
 	export let pointersWritableProxy: Writable<PointersDict> = writable({})
 	export let pPan: (e: CustomEvent<PanEvent>, ctx: CanvasRenderingContext2D) => boolean = () => true
 	export let context: ContextWrapper<Context2D> | undefined = undefined
-	export let minZoom = 2000
+	export let minZoom = 1200
 	export let maxZoom = 100000
-
-	export let cameraRect: Rect = new Rect(-0.5, -0.5, 0.5, 0.5)
 
 	const dispatch = createEventDispatcher<{
 		ppanstart: PEvent
@@ -71,6 +65,8 @@
 			})
 			ctx = context.ctx.canvasCtx
 			canvas = ctx.canvas
+			context.ctx.setScaleBounds(minZoom, maxZoom)
+			context.ctx.setPosBounds(newVec2(-0.5, -0.5), newVec2(0.5, 0.5))
 			dispatch('initialized')
 		}
 	}
@@ -150,41 +146,35 @@
 
 	let setScaleTimeout = 0
 
-	function onZoom(e: CustomEvent<ZoomEvent>) {
-		if (!ctx || !canvas || !context) return
+	function onZoomBounce(scale: { scale?: number }) {
+		const e = mostRecentZoomEvent
+		if (!ctx || !canvas || !context || !e || !scale.scale || !mostRecentZoomValue) return false
 		let { scaleAmount, relativeX, relativeY } = e.detail
-		scaleAmount = Math.abs(scaleAmount)
+		const oldZoom = mostRecentZoomValue
+		const newZoom = scale.scale
+		mostRecentZoomValue = newZoom
+		const xOffset = relativeX - ctx.canvas.width / 2 / devicePixelRatio
+		const yOffset = relativeY - ctx.canvas.height / 2 / devicePixelRatio
+		context.ctx.setPosToVec(
+			addVec(
+				context.ctx.getPos(),
+				newVec2(xOffset / newZoom - xOffset / oldZoom, yOffset / newZoom - yOffset / oldZoom)
+			)
+		)
+		dispatch('zoom', e.detail)
+		dispatch('canvasWindowChanged')
+		return true
+	}
+
+	let mostRecentZoomEvent: CustomEvent<ZoomEvent> | undefined = undefined
+	let mostRecentZoomValue: number | undefined = undefined
+	async function onZoom(e: CustomEvent<ZoomEvent>) {
+		if (!ctx || !canvas || !context) return
+		mostRecentZoomEvent = e
+		let { scaleAmount, relativeX, relativeY } = e.detail
 		const oldZoom = context.ctx.getScale()
 		const newZoom = oldZoom * scaleAmount
-		clearTimeout(setScaleTimeout)
-		setScaleTimeout = setTimeout(() => {
-			if (!ctx || !canvas || !context) return
-			// get scale
-			const oz = context.ctx.getScale()
-			const nz = clamp(minZoom, oldZoom * scaleAmount, maxZoom)
-			if (oz === nz) return
-			// get diff between old and new zoom
-			const diff = Math.log10(Math.abs(oz - nz)) * 0.1
-			// set interp of context
-			const time = diff
-			context.ctx.setInterp(getLinearInterp(time))
-			window.setTimeout(() => {
-				if (!ctx || !canvas || !context) return
-				context.ctx.setInterp(getLinearInterp(0.05))
-			}, time * 1000)
-			dispatch('canvasWindowChanged')
-			context.ctx.setScale(nz)
-			const xOffset = relativeX - ctx.canvas.width / 2 / devicePixelRatio
-			const yOffset = relativeY - ctx.canvas.height / 2 / devicePixelRatio
-			context.ctx.setPosToVec(
-				addVec(
-					context.ctx.getPos(),
-					newVec2(xOffset / nz - xOffset / oz, yOffset / nz - yOffset / oz)
-				)
-			)
-			dispatch('zoom', e.detail)
-			dispatch('canvasWindowChanged')
-		}, 20)
+		mostRecentZoomValue = newZoom
 		context.ctx.setScale(newZoom)
 		const xOffset = relativeX - ctx.canvas.width / 2 / devicePixelRatio
 		const yOffset = relativeY - ctx.canvas.height / 2 / devicePixelRatio
@@ -195,6 +185,7 @@
 			)
 		)
 		dispatch('zoom', e.detail)
+		context.ctx.addScaleListener('bounce', onZoomBounce)
 		dispatch('canvasWindowChanged')
 	}
 	function onPPan(e: CustomEvent<PanEvent>) {

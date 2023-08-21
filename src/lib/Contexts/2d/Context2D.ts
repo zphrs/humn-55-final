@@ -4,21 +4,36 @@ import {
 	type DrawableObject,
 	type UpdatableAndDrawable
 } from '$lib/Surface/context'
-import { newVec2, vecToIter, type Vec2, clamp } from '$lib/Utils/vec2'
 import {
-	createAnimationInfo,
+	newVec2,
+	vecToIter,
+	type Vec2,
+	clamp,
+	copy,
+	distanceTo,
+	distanceTo2
+} from '$lib/Utils/vec2'
+import {
+	createLocalAnimationInfo,
 	type AnimationInfo,
-	type KeyToKeyOrNumber,
+	type Animatable,
 	modifyTo,
-	getCurrentState,
 	updateAnimationInfo,
-	newTo
-} from '../Animate'
+	changeInterpFunction,
+	modifyAnimationBounds,
+	type Bounds,
+	createAnimationInfo,
+	type AnimatableEvents,
+	getCurrentStateWithChildren,
+	addListener,
+	removeListener
+} from '../Animate/Animatable'
 import type { DrawableShape } from '../DrawableShape'
-import { getSlerp, NO_INTERP, type Interp, getLinearInterp } from '../Interp'
+import { type Interp, getLinearInterp, getSlerp } from '../Animate/Interp'
 import { createDot, type Dot } from './Dot'
 import { createLine, type Line } from './Line'
 import { createRect, type Rect } from './Rect'
+import type { Listeners } from '../Listeners'
 
 export type HasZIndex = { zIndex: number }
 
@@ -56,6 +71,9 @@ export type Context2D = Readonly<{
 	setScale: (scale: number) => void
 	setPos: (x: number, y: number) => void
 	setPosToVec: (pos: Vec2) => void
+	setPosBounds: (lower: Vec2, upper: Vec2) => void
+	setScaleBounds: (lower: number, upper: number) => void
+	setPosInterp: (interp: Interp) => void
 	getScale: () => number
 	getPos: () => Vec2
 	delete: () => void
@@ -87,9 +105,27 @@ export type Context2D = Readonly<{
 	) => void
 	removeChild: (child: Deletable) => void
 	setInterp: (interp: Interp) => void
-}> & { pos: Vec2; scale: number }
+	addScaleListener: (
+		type: AnimatableEvents,
+		listener: (newValue: Partial<Scale>) => boolean | void
+	) => void
+	removeScaleListener: (
+		type: AnimatableEvents,
+		listener: (newValue: Partial<Scale>) => boolean | void
+	) => void
+	addPosListener: (
+		type: AnimatableEvents,
+		listener: (newValue: Partial<Vec2>) => boolean | void
+	) => void
+	removePosListener: (
+		type: AnimatableEvents,
+		listener: (newValue: Partial<Vec2>) => boolean | void
+	) => void
+}> &
+	ScalePos
 
-export type ScalePos = { scale: number; pos: Vec2 }
+export type Scale = { scale: number }
+export type ScalePos = Scale & { pos: Vec2 }
 
 type Deletable = { delete: () => void }
 
@@ -117,7 +153,7 @@ export function createContext2D(
 		canvas.style.left = '0'
 	}
 	let keysInObjects: number[] = []
-	type extendableKeyToKeyOrNumber = unknown extends KeyToKeyOrNumber ? KeyToKeyOrNumber : never
+	type extendedAnimatable = unknown extends Animatable ? Animatable : never
 	const restartListeners = new Set<() => void>()
 
 	function restartListener() {
@@ -125,7 +161,7 @@ export function createContext2D(
 	}
 	const out: ContextWrapper<Context2D> & {
 		objects: {
-			[zIndex: number]: Set<DrawableObject<extendableKeyToKeyOrNumber> & Deletable>
+			[zIndex: number]: Set<DrawableObject<extendedAnimatable> & Deletable>
 		}
 	} & DrawableShape<ScalePos> &
 		Deletable = {
@@ -136,12 +172,37 @@ export function createContext2D(
 			pos: newVec2(0, 0),
 			scale: 1,
 			canvasCtx: ctx,
+			addScaleListener: function (type, listener) {
+				addListener(animationInfo, type, listener)
+			},
+			removeScaleListener: function (type, listener) {
+				removeListener(animationInfo, type, listener)
+			},
+			removePosListener: function (type, listener) {
+				removeListener(animationInfo.children.pos, type, listener)
+			},
+			addPosListener: function (type, listener) {
+				addListener(animationInfo.children.pos, type, listener)
+			},
 			addDot(x: number, y: number, r: number, shapeConfig: ShapeConfig = {}) {
 				const { color, interp, zIndex } = completeShapeConfig(shapeConfig, config)
 				const dot = createDot(x, y, r, color, interp)
 				addObjectWithZIndex(out.objects, keysInObjects, zIndex, dot)
 				restartListener()
 				return dot
+			},
+			setPosBounds(lower, upper) {
+				console.log('setPosBounds', lower, upper)
+				modifyAnimationBounds<Vec2>(animationInfo.children.pos, {
+					lower,
+					upper
+				})
+			},
+			setScaleBounds(lower, upper) {
+				modifyAnimationBounds<Scale>(animationInfo, {
+					lower: { scale: lower },
+					upper: { scale: upper }
+				})
 			},
 			removeDot(dot: Dot) {
 				dot.delete()
@@ -215,7 +276,7 @@ export function createContext2D(
 			},
 			setScale: function (scale: number): void {
 				out.ctx.scale = scale
-				modifyTo(animationInfo, { scale })
+				modifyTo<Scale>(animationInfo, { scale })
 				restartListener()
 			},
 			getScale: function (): number {
@@ -227,12 +288,13 @@ export function createContext2D(
 			setPosToVec: function (pos: Vec2): void {
 				out.ctx.pos = pos
 				modifyTo(animationInfo, { pos })
+				restartListener()
 			},
 			getPos: function (): Vec2 {
 				return out.ctx.pos
 			},
 			delete: function () {
-				for (const zIndex in keysInObjects) {
+				for (const zIndex of keysInObjects) {
 					if (!out.objects[zIndex]) continue
 					for (const obj of out.objects[zIndex]) {
 						obj.delete()
@@ -266,7 +328,11 @@ export function createContext2D(
 				restartListener()
 			},
 			setInterp(interp: Interp): void {
-				animationInfo.timingFunction = interp
+				changeInterpFunction(animationInfo, interp)
+				restartListener()
+			},
+			setPosInterp(interp: Interp): void {
+				changeInterpFunction(animationInfo.children.pos, interp)
 				restartListener()
 			}
 		},
@@ -341,7 +407,7 @@ export function createContext2D(
 				)
 			}
 			// transform the canvas
-			const { pos, scale } = getCurrentState(animationInfo)
+			const { pos, scale } = getCurrentStateWithChildren(animationInfo)
 			// save the current state
 			ctx.canvasCtx.scale(scale, scale)
 			ctx.canvasCtx.translate(...vecToIter(pos))
@@ -360,12 +426,20 @@ export function createContext2D(
 			restartListeners.delete(listener)
 		},
 		delete: () => {
-			// modifyTo(animationInfo, { scale: 0 })
 			out.ctx.delete()
 		}
 	}
 	out.addRestartListener(() => {
 		out.needsUpdate = true
+	})
+	out.ctx.addScaleListener('start', (scale) => {
+		if (scale.scale) {
+			out.ctx.scale = scale.scale
+		}
+	})
+	out.ctx.addPosListener('start', (pos) => {
+		const newPos = { ...out.ctx.pos, ...pos }
+		out.ctx.pos = newPos
 	})
 	return out
 }

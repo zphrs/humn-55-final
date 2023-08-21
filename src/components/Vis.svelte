@@ -6,7 +6,7 @@
 	import { db, getUsersFromRect, type UserProfile } from '../TweetsStore'
 	import { Rect } from '$lib/PannableCanvas/sizes'
 	import type { Dot } from '$lib/Contexts/2d/Dot'
-	import { getSlerp } from '$lib/Contexts/Interp'
+	import { getSlerp } from '$lib/Contexts/Animate/Interp'
 	import DotElem from './Dot.svelte'
 	import Key from './Key.svelte'
 	import { addVec, clamp, distanceTo, newVec2, subVec, type Vec2 } from '$lib/Utils/vec2'
@@ -22,7 +22,7 @@
 		if (!context) throw new Error('Context is null after init')
 		context.ctx.setScale(
 			clamp(
-				2000,
+				1200,
 				Math.max(context.ctx.canvasCtx.canvas.width, context.ctx.canvasCtx.canvas.height),
 				100000
 			)
@@ -59,9 +59,10 @@
 			if (timeout) clearTimeout(timeout)
 			timeout = setTimeout(() => {
 				getDots(true)
-			}, 1000)
+			}, 100)
 			return
 		}
+		console.log('Refreshing onscreen dots')
 		if (!dotsContext) throw new Error('Context is null after init')
 		const { ctx } = dotsContext
 		if (!$db) return
@@ -85,20 +86,22 @@
 	$: startDate = new Date(start + range * sliderValue)
 	$: endDate = new Date(startDate.getTime() + 30 * 24 * 60 * 60 * 1000)
 	$: timestampRange = [startDate, endDate] as [Date, Date]
-	let newTimestampRange = timestampRange
+	let newTimestampRange = [new Date(start), new Date(start + 30 * 24 * 60 * 60 * 1000)] as [
+		Date,
+		Date
+	]
 	let sliderTimeout = 0
 	function setTimestampRange(timestampRange: [Date, Date]) {
 		loaded = false
 		clearTimeout(sliderTimeout)
 		sliderTimeout = setTimeout(() => {
 			newTimestampRange = timestampRange
-		}, 1000)
+		}, 100)
 	}
 	$: setTimestampRange(timestampRange)
 	$: newTimestampRange && resetAllSaturated()
 	let allSaturated = new Set(usersOnScreen.map((u) => u.user))
 	let loaded = false
-	// $: window.getUsersFromRect = getUsersFromRect.bind(null, $db, new Rect(0, 0, 0.01, 0.01))
 	let screenSpaceToCanvasSpace: (x: number, y: number) => Vec2
 	function getTappedUser(e: PEvent) {
 		e.relativeX
@@ -126,6 +129,7 @@
 	}
 
 	function broadcastIfUserTapped(e: CustomEvent<PEvent>) {
+		console.log('HERE')
 		const user = getTappedUser(e.detail)
 		userSelected = user
 	}
@@ -162,6 +166,7 @@
 						loaded = allSaturated.size == 0
 					}}
 					{user}
+					selected={userSelected && user.user == userSelected.user}
 					currentTimestampRange={newTimestampRange}
 					db={$db}
 				/>

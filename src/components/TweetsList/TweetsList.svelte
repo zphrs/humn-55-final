@@ -4,7 +4,6 @@
 
 	export let tweets: Tweet[]
 	export let updating = false
-	console.log(tweets)
 	$: tweetsReversed = tweets.slice().reverse()
 </script>
 
