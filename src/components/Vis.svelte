@@ -15,7 +15,7 @@
 	import UserProfilePopup from './UserProfilePopup.svelte'
 	let context: ContextWrapper<Context2D> | undefined = undefined
 	let getScreenSize: () => Rect
-	let sliderValue = 0
+	let sliderValue = 0.405
 	let dotsContext: ContextWrapper<Context2D> | undefined = undefined
 	let usersOnScreen: UserProfile[] = []
 	const init = () => {
@@ -86,10 +86,11 @@
 	$: startDate = new Date(start + range * sliderValue)
 	$: endDate = new Date(startDate.getTime() + 30 * 24 * 60 * 60 * 1000)
 	$: timestampRange = [startDate, endDate] as [Date, Date]
-	let newTimestampRange = [new Date(start), new Date(start + 30 * 24 * 60 * 60 * 1000)] as [
-		Date,
-		Date
-	]
+	const firstTimestamp = new Date('November 1, 2014').getTime()
+	let newTimestampRange = [
+		new Date(firstTimestamp),
+		new Date(firstTimestamp + 30 * 24 * 60 * 60 * 1000)
+	] as [Date, Date]
 	let sliderTimeout = 0
 	function setTimestampRange(timestampRange: [Date, Date]) {
 		loaded = false
