@@ -67,9 +67,9 @@
 	function onSaturatedUserChange(saturatedUser: SaturatedUserProfile | undefined) {
 		if (saturatedUser == undefined) {
 			Object.values(dots).map((dot) => {
-				const scale = dot.r / 2
+				const scale = dot.getRadius() / 2
 				drawable.ctx.setDotRadius(dot, scale)
-				const vec = normalize(dot.pos)
+				const vec = normalize(dot.getPos())
 				const newVec = mulScalar(vec, Math.max(scale, 1))
 				drawable.ctx.moveDot(dot, ...vecToIter(newVec))
 			})
@@ -145,7 +145,7 @@
 			const dot = dots[key as keyof typeof dots]
 			const scale = stats[key as keyof typeof stats]
 			drawable.ctx.setDotRadius(dot, scale)
-			const vec = normalize(dot.pos)
+			const vec = normalize(dot.getPos())
 			const newVec = mulScalar(vec, Math.max(scale, 1))
 			drawable.ctx.moveDot(dot, ...vecToIter(newVec))
 		}

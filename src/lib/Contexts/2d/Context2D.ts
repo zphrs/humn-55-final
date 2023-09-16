@@ -192,7 +192,6 @@ export function createContext2D(
 				return dot
 			},
 			setPosBounds(lower, upper) {
-				console.log('setPosBounds', lower, upper)
 				modifyAnimationBounds<Vec2>(animationInfo.children.pos, {
 					lower,
 					upper
@@ -209,7 +208,7 @@ export function createContext2D(
 				restartListener()
 			},
 			moveDot(dot: Dot, x: number, y: number) {
-				dot.setPos(x, y)
+				dot.setPos({ x, y })
 				restartListener()
 			},
 			setDotRadius(dot: Dot, r: number) {
@@ -230,11 +229,11 @@ export function createContext2D(
 				return line
 			},
 			setLineP1: function (line: Line, x: number, y: number): void {
-				line.setP1(x, y)
+				line.setP1({ x, y })
 				restartListener()
 			},
 			setLineP2: function (line: Line, x: number, y: number): void {
-				line.setP2(x, y)
+				line.setP2({ x, y })
 				restartListener()
 			},
 			setLineThickness: function (line: Line, thickness: number): void {
