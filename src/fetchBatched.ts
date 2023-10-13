@@ -23,22 +23,28 @@ export async function fetch_batched(url: string, signal: AbortSignal): Promise<T
 		}
 	})
 }
-
-async function batch_requests(count: number) {
-	console.log('batching', count)
-	queue = queue.filter((item) => !item.signal.aborted)
-	const batch = queue.splice(0, count)
-	await Promise.all(batch.map((req) => fetch_tweets(req)))
+async function asEachResolves<T>(values: Promise<T>[], onResolve: (item: T) => void): Promise<T[]> {
+	const results = await Promise.all(values)
+	values.forEach(async (item) => onResolve(await item))
+	return results
 }
 async function loop() {
 	currentlyFetching = true
-	while (true) {
-		console.log('looping')
-		await batch_requests(20)
-		await sleep(1) // wait a second to let other async things get processed
-		if (queue.length == 0) break
+	async function onResolve() {
+		if (queue.length == 0) {
+			currentlyFetching = false
+			return
+		}
+		let rand = Math.random()
+		let timeout = rand * rand
+		await sleep(timeout / 100)
+		fetch_tweets(queue.shift()!).then(onResolve)
 	}
-	currentlyFetching = false
+	const batch = queue.splice(0, 20)
+	asEachResolves(
+		batch.map((req) => fetch_tweets(req)),
+		onResolve
+	)
 }
 
 async function fetch_tweets(item: QueueItem) {

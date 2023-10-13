@@ -20,13 +20,10 @@
 	let usersOnScreen: UserProfile[] = []
 	const init = () => {
 		if (!context) throw new Error('Context is null after init')
-		context.ctx.setScale(
-			clamp(
-				1200,
-				Math.max(context.ctx.canvasCtx.canvas.width, context.ctx.canvasCtx.canvas.height),
-				100000
-			)
-		)
+		setTimeout(() => {
+			if (!context) throw new Error('Context is null after init')
+			context.ctx.setScale(5000)
+		}, 1000)
 		dotsContext = context.ctx.addChild(-0.5, -0.5, 1, { color: '#000', interp: getSlerp(0.5) })
 		// let dot = context.ctx.addDot(0, 0, 10)
 	}
@@ -112,7 +109,7 @@
 		const users = usersOnScreen.filter((u) => {
 			const posVec = subVec(newVec2(...u.randomPos), newVec2(0.5, 0.5))
 			const dist = distanceTo(posVec, pos)
-			return dist < 0.002
+			return dist < 0.02
 		})
 		// sort users by distance
 		users.sort((a, b) => {
@@ -181,7 +178,14 @@
 			class="label middle"
 			class:loaded
 			style={`--progress: ${sliderValue * 100}%; --progress-decimal: ${sliderValue};`}
-			>{endDate.toLocaleDateString('en-us', { year: 'numeric', month: 'short' })}</span
+		>
+			{#if !loaded}
+				loading… <span style="color: var(--gray-700)">|</span>
+			{/if}
+			{endDate.toLocaleDateString('en-us', {
+				year: 'numeric',
+				month: 'short'
+			})}</span
 		>
 		<span class="label right">2023</span>
 	</div>
@@ -220,24 +224,36 @@
 	.label.middle {
 		position: relative;
 		display: block;
-		width: 5.5rem;
+		width: 10rem;
 		padding: 0 0.25rem;
 		border-radius: 0.5rem;
 		text-align: center;
 		top: -3.5rem;
-		left: calc(var(--progress) - var(--progress-decimal) * 5.5rem);
+		color: white;
+		left: calc(var(--progress) - var(--progress-decimal) * 10rem);
 		background-color: var(--gold-700);
 		background: linear-gradient(
 			135deg,
-			var(--sea-900),
-			var(--fire-900),
-			var(--gold-900),
-			var(--violet-900),
-			var(--sea-900),
-			var(--fire-900),
-			var(--gold-900),
-			var(--violet-900)
+			var(--sea-300),
+			var(--fire-300),
+			var(--gold-300),
+			var(--violet-300),
+			var(--sea-300),
+			var(--fire-300),
+			var(--gold-300),
+			var(--violet-300)
 		);
+		/* background: linear-gradient(
+			135deg,
+			var(--gray-100),
+			var(--gray-100) 25%,
+			var(--gray-500) 26%,
+			var(--gray-500) 50%,
+			var(--gray-100) 51%,
+			var(--gray-100) 75%,
+			var(--gray-500) 76%,
+			var(--gray-500)
+		); */
 		background-size: 600% 600%;
 		background-repeat: repeat;
 		background-position: 0% 50%;
@@ -254,6 +270,9 @@
 	}
 	.label.middle.loaded {
 		background: var(--gray-900);
+		width: 5.5rem;
+		left: calc(var(--progress) - var(--progress-decimal) * 5.5rem);
+		color: black;
 	}
 
 	@keyframes pulse {
