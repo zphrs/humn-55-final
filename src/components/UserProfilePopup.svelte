@@ -112,9 +112,11 @@
 			>
 		</h1>
 		{#if showLoading}
-			{#each Array(2) as _, i}
-				<div class="tweet loading mh-100" class:updating={showUpdating} />
-			{/each}
+			<div class="tweets">
+				{#each Array(2) as _, i}
+					<div class="tweet loading mh-100" class:updating={showUpdating} />
+				{/each}
+			</div>
 		{/if}
 	{/if}
 </div>
@@ -130,6 +132,9 @@
 	}
 	h1 {
 		max-width: calc(100% - 3.75rem);
+	}
+	.tweets {
+		overflow: auto;
 	}
 	.x {
 		position: absolute;
