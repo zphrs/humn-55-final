@@ -82,7 +82,7 @@
 			class="loading"
 		/>
 	{/if}
-	<button class="x" on:click={() => dispatch('close')}>Close</button>
+	<button class="x" on:click={() => dispatch('close')}>Close <kbd>esc</kbd></button>
 	{#if newSaturatedUser}
 		<h1 class:updating={showUpdating}>
 			<a href={'https://twitter.com/' + newSaturatedUser.user}>@{newSaturatedUser.user}</a>
@@ -120,6 +120,14 @@
 </div>
 
 <style>
+	kbd {
+		background-color: var(--gray-900);
+		border-radius: 0.25rem;
+		border-top: 1px solid var(--gray-400);
+		border-left: 1px solid var(--gray-400);
+		border-right: 2px solid var(--gray-600);
+		border-bottom: 2px solid var(--gray-600);
+	}
 	h1 {
 		max-width: calc(100% - 3.75rem);
 	}
@@ -172,11 +180,11 @@
 	.main {
 		position: absolute;
 		border: 2px solid var(--gray-100);
-		top: 5rem;
+		top: 3rem;
 		right: 1rem;
 		z-index: 100;
 		background-color: var(--gray-950);
-		max-height: 22rem;
+		max-height: min(22rem, 80vh - 7.5rem);
 		width: min(100%, 400px);
 		padding: 0.5rem;
 		display: flex;

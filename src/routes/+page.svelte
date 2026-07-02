@@ -12,10 +12,11 @@
 	<Surface width={50} height={30} />
 {/if}
 <p>
-	Each user is a gray dot. Scroll around to see all of the users. Drag through the timeline to
-	explore different months of user activity. A user will light up with colored circles and turn
-	black if they have tweeted that month, color coded to coorespond with the colors listed below. A
-	light gray user indicates that the user hasn't tweeted within the month.
+	Each user is a gray dot. Scroll around to see all of the users. Click near a user in order to view
+	that user's tweets up to the current timeline date. Drag through the timeline to explore different
+	months of user activity. A user will light up with colored circles and turn black if they have
+	tweeted that month, color coded to coorespond with the colors listed below. A light gray user
+	indicates that the user hasn't tweeted within the month.
 </p>
 <p>
 	Some key months to examine are November 2014 (Black Lives Matter), July 2016 (Blue Lives Matter),

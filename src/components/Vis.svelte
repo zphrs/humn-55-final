@@ -119,9 +119,12 @@
 			const distB = distanceTo(posVecB, pos)
 			return distA - distB
 		})
-		// get closest user
+		// get closest user that's lit up
 		const user = users[0]
 		if (!user) return
+		if (distanceTo(subVec(newVec2(...user.randomPos), newVec2(0.5, 0.5)), pos) > 0.005) {
+			return
+		}
 		console.log(user)
 		return user
 	}
@@ -197,6 +200,8 @@
 		max-width: 960px;
 		width: 100%;
 		position: relative;
+		max-height: 80svh;
+		overflow: hidden;
 	}
 	.timeline {
 		position: absolute;
@@ -204,6 +209,10 @@
 		margin: 0 1rem;
 		left: 0;
 		bottom: 0;
+		pointer-events: none;
+	}
+	.timeline > * {
+		pointer-events: auto;
 	}
 	input {
 		width: 100%;
